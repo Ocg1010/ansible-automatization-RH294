@@ -1,0 +1,125 @@
+# SUBDIRECTORIOS DE ROL
+#defaults	El archivo main.yml en este directorio contiene los valores predeterminados de variables del rol que se pueden sobrescribir cuando se usa un rol. Estas variables tienen poca prioridad y están destinadas a modificarse y personalizarse en los plays.
+
+#files	Este directorio contiene archivos estáticos a los que hacen referencia las tareas de los roles.
+
+#handlers	El archivo main.yml en este directorio contiene las definiciones del administrador de roles.
+
+#meta	El archivo main.yml en este directorio contiene información acerca del rol, incluido el autor, la licencia, las plataformas y las dependencias de roles opcionales.
+
+#tasks	El archivo main.yml en este directorio contiene las definiciones de las tareas de los roles.
+
+#templates	Este directorio contiene plantillas Jinja2 a las que hacen referencia las tareas de los roles.
+
+#tests	Este directorio puede contener un inventario y una guía de test.yml que se pueden usar para probar un rol.
+
+#vars	El archivo main.yml en este directorio define los valores de la variable del rol. A menudo, estas variables se utilizan para fines internos dentro del rol. Estas variables tienen una alta prioridad y no están diseñadas para ser cambiadas cuando se usan en una guía.
+
+
+
+# El siguiente play muestra cómo se puede importar un rol usando una tarea con el módulo ansible.builtin.import_role. El play de ejemplo ejecuta la tarea A normal task primero, luego importa el rol role2.
+
+- name: Run a role as a task
+  hosts: remote.example.com
+  tasks:
+    - name: A normal task
+      ansible.builtin.debug:
+        msg: 'first task'
+    - name: A task to import role2 here
+      ansible.builtin.import_role:
+        name: role2
+
+          #Con el módulo ansible.builtin.import_role, Ansible trata el rol como una importación estática y lo analiza durante el procesamiento inicial del playbook.
+
+          # Una diferencia clave entre los dos módulos es cómo manejan las palabras clave, los condicionales y los bucles al nivel de tarea:
+
+          # ansible.builtin.import_role aplica los condicionales y los bucles de la tarea a cada una de las tareas que se importan.
+
+          # ansible.builtin.include_role aplica los condicionales y los bucles de la tarea a la declaración que determina si el rol está incluido o no.
+
+          # Además, cuando incluye un rol, sus variables de rol y las variables predeterminadas no se exponen al resto del play, a diferencia de ansible.builtin.import_role.
+
+
+
+
+# Otra forma de invocar roles en un play es enumerarlos en una sección roles. La sección roles es muy similar a la sección tasks, excepto que en lugar de consistir en una lista de tareas, consiste en una lista de roles.
+
+---
+- name: A play that only has roles
+  hosts: remote.example.com
+  roles:
+    - role: role1
+    - role: role2
+
+# Por cada rol especificado, las tareas, los manejadores, las variables y las dependencias de los roles se importan al play en el orden en que aparecen en la lista.
+
+      # IMPORTANTE 
+      # Cuando usa una sección roles para importar roles a un play, los roles se ejecutan primero, antes que cualquier tarea que defina para ese play. No importa si la sección roles aparece antes o después de la sección tasks en el play.
+# Debido a que los roles se ejecutan primero, generalmente tiene sentido enumerar la sección roles antes de la sección tasks, si debe tener ambas. El play anterior se puede reescribir de la siguiente manera sin cambiar la forma en que se ejecuta:
+
+
+
+#En el siguiente ejemplo, se establecen valores para dos variables de rol de role2, var1 y var2. Las variables defaults y vars se anulan cuando se usa role2.
+
+---
+- name: A play that runs the second role with variables
+  hosts: remote.example.com
+  roles:
+    - role: role1
+    - role: role2
+      var1: val1
+      var2: val2
+
+
+        #  Ansible busca líneas de roles duplicadas en la sección roles. Si se enumeran dos roles con exactamente los mismos parámetros, el rol solo se ejecuta una vez.
+
+        # Por ejemplo, la siguiente sección roles solo ejecuta role1 una vez:
+
+roles:
+  - { role: role1, service: "httpd" }
+  - { role: role2, var1: true }
+  - { role: role1, service: "httpd" }
+
+    # Para ejecutar el mismo rol por segunda vez, debe tener diferentes parámetros definidos:
+
+roles:
+  - { role: role1, service: "httpd" }
+  - { role: role2, var1: true }
+  - { role: role1, service: "postfix" }
+
+
+# Hay dos secciones de tareas especiales, pre_tasks y post_tasks
+# La sección pre_tasks es una lista de tareas, similar a tasks, pero estas tareas se ejecutan antes que cualquiera de los roles en la sección roles. Si alguna de las tareas en la sección pre-tasks notifica a un manejador, las tareas del manejador se ejecutan antes que los roles o las tareas normales.
+
+# Los plays también soportan una palabra clave post_tasks. Estas tareas se ejecutan después de las tasks del play y los manejadores notificados por las tasks del play.
+
+
+
+# El siguiente play muestra un ejemplo con pre_tasks, roles, tasks, post_tasks y handlers. Es raro que un play tenga todas estas secciones.
+
+- name: Play to illustrate order of execution
+  hosts: remote.example.com
+  pre_tasks:
+    - name: This task runs first
+      ansible.builtin.debug:
+        msg: This task is in pre_tasks
+      notify: my handler
+      changed_when: true
+  roles:
+    - role: role1
+  tasks:
+    - name: This task runs after the roles
+      ansible.builtin.debug:
+        msg: This task is in tasks
+      notify: my handler
+      changed_when: true
+  post_tasks:
+    - name: This task runs last
+      ansible.builtin.debug:
+        msg: This task is in post_tasks
+      notify: my handler
+      changed_when: true
+  handlers:
+    - name: my handler
+      ansible.builtin.debug:
+        msg: Running my handler

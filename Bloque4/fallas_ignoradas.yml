@@ -1,0 +1,87 @@
+- name: Latest version of notapkg is installed
+  ansible.builtin.dnf:
+    name: notapkg
+    state: latest
+  ignore_errors: yes
+
+    # En el siguiente fragmento se muestra cómo usar la palabra clave force_handlers en un play para forzar la ejecución del manejador notificado, incluso si falla una tarea:
+
+---
+- hosts: all
+  force_handlers: yes
+  tasks:
+    - name: a task which always notifies its handler
+      ansible.builtin.command: /bin/true
+      notify: restart the database
+
+    - name: a task which fails because the package doesn't exist
+      ansible.builtin.dnf:
+        name: notapkg
+        state: latest
+
+  handlers:
+    - name: restart the database
+      ansible.builtin.service:
+        name: mariadb
+        state: restarted
+
+          # IMPORTANTE
+          # Recuerde que se notifica a los manejadores cuando una tarea informa un resultado changed, pero no se notifican cuando informa un resultado ok o failed.
+          # Si establece force_handlers: yes en el play, todos los manejadores que hayan sido notificados se ejecutarán incluso si una falla posterior de la tarea hace que el play falle. De lo contrario, los manejadores no se ejecutan en absoluto cuando falla un play.
+          # Establecer force_handlers: yes en un play no hace que los manejadores sean notificados para tareas que reportan ok o failed; solo hace que se ejecuten los manejadores que ya han sido notificados antes del punto en el que falló el play.
+          
+
+          # Puede usar la palabra clave failed_when en una tarea para especificar las condiciones que indican que la tarea falló. A menudo, esto se usa con los módulos de comando que pueden ejecutar un comando correctamente, pero la salida del comando indica una falla.
+          # Por ejemplo, puede ejecutar un script que presenta un mensaje de error y usar ese mensaje para definir el estado fallido para la tarea. En el siguiente ejemplo se muestra una forma en que puede usar la palabra clave failed_when en una tarea:
+
+tasks:
+  - name: Run user creation script
+    ansible.builtin.shell: /usr/local/bin/create_users.sh
+    register: command_result
+    failed_when: "'Password missing' in command_result.stdout"
+
+      # El módulo ansible.builtin.fail también se puede usar para forzar la falla de una tarea. En su lugar, podría escribir ese ejemplo como dos tareas:
+
+tasks:
+  - name: Run user creation script
+    ansible.builtin.shell: /usr/local/bin/create_users.sh
+    register: command_result
+    ignore_errors: yes
+
+  - name: Report script failure
+    ansible.builtin.fail:
+      msg: "The password is missing in the output"
+    when: "'Password missing' in command_result.stdout"
+      # Puede usar el módulo ansible.builtin.fail para proporcionar un mensaje de error claro para la tarea. Este enfoque también permite la falla retrasada, lo que significa que puede ejecutar tareas intermedias para completar o revertir otros cambios.
+      
+
+
+
+
+
+      # Use la palabra clave changed_when para controlar cómo una tarea informa que ha cambiado algo en el host administrado. Por ejemplo, el módulo ansible.builtin.command en el siguiente ejemplo valida la configuración httpd en un host administrado.
+
+      # Esta tarea valida la sintaxis de configuración, pero no se cambia nada en el host administrado. Las tareas posteriores pueden usar el valor de la variable httpd_config_status.
+
+      # En general, informaría siempre changed cuando se ejecuta. Para eliminar ese informe de modificación, changed_when: false se establece de modo que solo informa ok o failed.
+
+  - name: Validate httpd configuration
+    ansible.builtin.command: httpd -t
+    changed_when: false
+    register: httpd_config_status
+
+      # En el siguiente ejemplo se usa el módulo ansible.builtin.shell y solo se informa changed si se encuentra la cadena "Success" en la salida de la variable registrada. Si informa changed, entonces notifica al manejador.
+
+tasks:
+  - ansible.builtin.shell:
+      cmd: /usr/local/bin/upgrade-database
+    register: command_result
+    changed_when: "'Success' in command_result.stdout"
+    notify:
+      - restart_database
+
+handlers:
+  - name: restart_database
+     ansible.builtin.service:
+       name: mariadbq
+       state: restarted

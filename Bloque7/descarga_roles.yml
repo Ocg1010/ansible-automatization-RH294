@@ -1,0 +1,55 @@
+#Por ejemplo, podría tener un rol en un repositorio público en un servidor Git en https://git.example.com/someuser/someuser.myrole. Un requirements.yml sencillo para instalar someuser.myrole puede incluir el siguiente contenido:
+
+- src: https://git.example.com/someuser/someuser.myrole
+  scm: git
+  version: "1.5.0"
+    #El atributo src especifica la fuente del rol, en este caso la URL del repositorio del rol en su servidor Git. También puede usar la autenticación basada en claves SSH especificando algo como git@git.example.com:someuser/someuser.myrole según lo provisto por su repositorio de Git.
+
+    #El atributo scm indica que este rol es de un repositorio de Git.
+
+    #El atributo version es opcional y especifica la versión del rol que se instalará, en este caso, 1.5.0. En el caso de un rol almacenado en Git, la versión puede ser el nombre de una rama, una etiqueta o un hash de confirmación de Git. Si no especifica una versión, el comando usa la última confirmación en la rama predeterminada.
+
+
+
+    #Para instalar roles usando un archivo de requisitos de roles, ejecute el comando ansible-galaxy role install desde el directorio de su proyecto. Incluya las siguientes opciones:
+
+    #-r roles/requirements.yml para especificar la ubicación de su archivo de requisitos
+
+    #-p roles para instalar el rol en un subdirectorio del directorio roles
+ansible-galaxy role install -r roles/requirements.yml  -p roles
+
+
+
+#IMPORTANTE
+#Si no especifica la opción -p roles, ansible-galaxy usa el primer directorio en la configuración predeterminada roles_path para determinar dónde instalar el rol. Se establece de forma predeterminada el directorio ~/.ansible/roles del usuario, que está fuera del directorio del proyecto y no está disponible para el entorno de ejecución si usa ansible-navigator para ejecutar sus playbooks.
+
+#Una forma de evitar la necesidad de especificar -p roles es aplicar la siguiente configuración en la sección ansible.cfg del archivo defaults de su proyecto:
+roles_path = roles
+
+
+#Si tiene un archivo de almacenamiento tar que contiene un rol, puede usar roles/requirements.yml para instalar ese archivo desde una URL:
+- src: https://www.example.com/role-archive/someuser.otherrole.tar
+  name: someuser.otherrole
+
+
+    #En el ejemplo siguiente, se muestran los nombres de los roles que incluyen redis y están disponibles para la plataforma Enterprise Linux (EL).
+
+ansible-galaxy search 'redis' --platforms EL
+
+# El subcomando ansible-galaxy info muestra información más detallada acerca de un rol. Ansible Galaxy obtiene esta información de varios lugares, incluido el archivo meta/main.yml del rol y su repositorio de GitHub
+
+ansible-galaxy info geerlingguy.redis
+
+
+# El comando ansible-galaxy también puede administrar roles locales, como aquellos que se encuentran en el directorio roles de un proyecto de playbook. El subcomando ansible-galaxy list enumera los roles locales.
+
+ansible-galaxy list
+
+
+# Puede eliminar un rol con el subcomando ansible-galaxy remove.
+
+ansible-galaxy remove nginx
+
+
+
+

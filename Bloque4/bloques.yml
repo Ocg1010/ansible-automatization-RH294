@@ -1,0 +1,40 @@
+# En los playbooks, los blocks (bloques) son cláusulas que agrupan tareas de forma lógica y se pueden usar para controlar cómo se ejecutan las tareas. Por ejemplo, un bloque de tareas puede tener una palabra clave when para aplicar un condicional a varias tareas:
+
+- name: block example
+  hosts: all
+  tasks:
+    - name: installing and configuring DNF versionlock plugin
+      block:
+      - name: package needed by dnf
+        ansible.builtin.dnf:
+          name: python3-dnf-plugin-versionlock
+          state: present
+      - name: lock version of tzdata
+        ansible.builtin.lineinfile:
+          dest: /etc/yum/pluginconf.d/versionlock.list
+          line: tzdata-2016j-1
+          state: present
+      when: ansible_distribution == "RedHat"
+
+ # block: define las tareas principales para ejecutar.
+
+  # rescue: define las tareas que se ejecutarán si fallan las tareas definidas en la cláusula block.
+
+  # always: define las tareas que se ejecutarán siempre, independientemente del éxito o de la falla de las tareas definidas en las cláusulas block y rescue.
+  #
+  tasks:
+    - name: Upgrade DB
+      block:
+        - name: upgrade the database
+          ansible.builtin.shell:
+            cmd: /usr/local/lib/upgrade-database
+      rescue:
+        - name: revert the database upgrade
+          ansible.builtin.shell:
+            cmd: /usr/local/lib/revert-database
+      always:
+        - name: always restart the database
+          ansible.builtin.service:
+            name: mariadb
+            state: restarted
+              # La condición when en una cláusula block también se aplica a sus cláusulas rescue y always si están presentes.

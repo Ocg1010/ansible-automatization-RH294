@@ -1,0 +1,60 @@
+  tasks:
+    - name: Attempt to set up a webserver
+      block:
+        - name: Install {{ web_package }} package
+          ansible.builtin.dnf:
+            name: "{{ web_package }}"
+            state: present
+      rescue:
+        - name: Install {{ db_package }} package
+          ansible.builtin.dnf:
+            name: "{{ db_package }}"
+            state: present
+      always:
+        - name: Start {{ db_service }} service
+          ansible.builtin.service:
+            name: "{{ db_service }}"
+            state: started
+
+
+# 2
+
+  tasks:
+    - name: Install {{ web_package }} package
+      ansible.builtin.dnf:
+        name: "{{ web_package }}"
+        state: present
+
+    - name: Install {{ db_package }} package
+      ansible.builtin.dnf:
+        name: "{{ db_package }}"
+        state: present
+
+# 3
+# Esa tarea ansible.builtin.command no debería informar changed cada vez que se ejecuta, ya que no modifica el host administrado. Dado que sabe que la tarea nunca modifica un host administrado, agregue la línea changed_when: false a la tarea para eliminar la modificación.
+
+  tasks:
+    - name: Check local time
+      ansible.builtin.command: date
+      register: command_result
+      changed_when: false
+
+    - name: Print local time
+      ansible.builtin.debug:
+        var: command_result.stdout
+
+# 4 
+# Edite la tarea Install {{ web_package }} package de modo que informe que falló cuando web_package tenga el valor httpd. Dado que este es el caso, la tarea informará una falla cuando ejecute el play.
+
+# Preste atención a su sangría para asegurarse de que la palabra clave se establezca correctamente en la tarea.
+
+      block:
+        - name: Install {{ web_package }} package
+          ansible.builtin.dnf:
+            name: "{{ web_package }}"
+            state: present
+          failed_when: web_package == "httpd"
+
+            # Observe la salida con atención. La palabra clave failed_when modifica el estado que informa la tarea después de su ejecución; no modifica el comportamiento de la tarea en sí.
+
+# Sin embargo, la falla informada puede modificar el comportamiento del resto del play. Dado que esta tarea se encontraba en un bloque e informó una falla, se ejecutó la tarea Install mariadb-server package en la sección rescue del bloque

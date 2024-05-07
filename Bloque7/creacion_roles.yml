@@ -1,0 +1,14 @@
+#Crear y usar un rol es un proceso de tres pasos:
+#Cree la estructura del directorio de roles.
+
+#Defina el contenido de los roles.
+
+#Use el rol en un playbook.
+
+
+# CREACION DE UN ROL AUTOMATICAMENTE
+cd roles
+ansible-galaxy init my_new_role
+
+
+

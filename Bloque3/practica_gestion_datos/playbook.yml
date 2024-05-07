@@ -1,0 +1,17 @@
+---
+- name: Install apache and starts the service
+  hosts: RHEL
+  tasks:
+# Todo esto esta en al ruta /etc/ansible/facts.d/custom.fact
+# De forma predeterminada, el módulo ansible.builtin.setup carga datos personalizados de archivos y scripts en el directorio etc/ansible/facts.d de cada host administrado. El nombre de cada archivo o script debe finalizar en .fact para poder usarse. Los scripts de datos personalizados dinámicos deben mostrar datos con formato JSON y deben ser ejecutables.
+    - name: Install the required package
+      ansible.builtin.dnf:
+        name: "{{ ansible_facts['ansible_local']['custom']['general']['package'] }}"
+        state: latest
+
+    - name: Start the service
+      ansible.builtin.service:
+        name: "{{ ansible_facts['ansible_local']['custom']['general']['service'] }}"
+        state: "{{ ansible_facts['ansible_local']['custom']['general']['state'] }}"
+        enabled: "{{ ansible_facts['ansible_local']['custom']['general']['enabled'] }}"
+

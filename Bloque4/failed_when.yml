@@ -1,0 +1,65 @@
+# Aquí, la tarea instala un paquete y registra el resultado. Si hay un error durante la instalación (detectado por el mensaje "Error" en la salida de error), la tarea se considera fallida y se informa al usuario.
+
+tasks:
+  - name: Install a package
+    ansible.builtin.package:
+      name: mypackage
+      state: present
+    register: package_install_result
+    failed_when: "'Error' in package_install_result.stderr"
+
+  - name: Report package installation failure
+    ansible.builtin.fail:
+      msg: "Failed to install the package"
+    when: package_install_result.failed
+
+
+# En este caso, la tarea verifica si un directorio existe antes de intentar copiar archivos en él. Si el directorio no existe, se considera un error y se detiene la ejecución del playbook.
+
+tasks:
+  - name: Check if the directory exists
+    ansible.builtin.stat:
+      path: /path/to/directory
+    register: directory_check
+    failed_when: "directory_check.stat.isdir == false"
+
+  - name: Copy files to directory
+    ansible.builtin.copy:
+      src: /path/to/files
+      dest: /path/to/directory
+    when: directory_check.stat.isdir
+
+# Aquí, Ansible verifica si un usuario existe en el sistema antes de ejecutar una acción. Si el usuario no existe, se considera un error y se detiene la ejecución del playbook.
+
+      # En cuanto a los códigos de retorno, en Linux, un código de retorno de 0 generalmente indica éxito, mientras que cualquier otro valor indica algún tipo de error. 
+#rc = return_code 
+#0: Éxito.
+#1: Error genérico.
+#2: Error de sintaxis.
+#126: Permiso denegado.
+#127: Comando no encontrado.
+#128: Error de salida del script (normalmente se suma el número de la señal).
+#130: El comando fue interrumpido por una señal (por ejemplo, Ctrl+C).
+#255: Error de salida desconocido.
+
+
+tasks:
+  - name: Check if the user exists
+    ansible.builtin.getent:
+      database: passwd
+      key: myuser
+    register: user_check
+    failed_when: "user_check.rc != 0"
+
+  - name: Perform an action if the user exists
+    ansible.builtin.command:
+      cmd: some_command
+    when: user_check.rc == 0
+
+
+
+
+
+
+
+      

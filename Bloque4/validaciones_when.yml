@@ -1,0 +1,76 @@
+---
+- name: Simple Boolean Task Demo
+  hosts: all
+  vars:
+    run_my_task: true
+
+  tasks:
+    - name: httpd package is installed
+      ansible.builtin.dnf:
+        name: httpd
+      when: run_my_task
+
+        # Para asegurarse de que este sea el caso, puede reescribir la condición when anterior para convertir un valor de cadena accidental en un booleano y pasar valores booleanos sin cambios:
+# when: run_my_task | bool
+
+
+#El siguiente ejemplo es un poco más sofisticado y prueba si la variable my_service tiene un valor. Si lo hace, el valor de my_service se usa como nombre del paquete para instalar. Si la variable my_service no está definida, la tarea se omite sin errores.
+---
+- name: Test Variable is Defined Demo
+  hosts: all
+  vars:
+    my_service: httpd
+
+  tasks:
+    - name: "{{ my_service }} package is installed"
+      ansible.builtin.dnf:
+        name: "{{ my_service }}"
+      when: my_service is defined
+    # when: my_service is not defined
+    
+# En el ejemplo, la variable ansible_facts['distribution'] es un dato determinado durante la tarea Gathering Facts e identifica la distribución del sistema operativo del host administrado. El autor del playbook creó la variable supported_distros y contiene una lista de las distribuciones de sistemas operativos que soporta el playbook. Si el valor de ansible_facts['distribution'] se encuentra en la lista supported_distros, pasa el condicional y se ejecuta la tarea.
+---
+- name: Demonstrate the "in" keyword
+  hosts: all
+  gather_facts: yes
+  vars:
+    supported_distros:
+      - RedHat
+      - Fedora
+  tasks:
+    - name: Install httpd using dnf, where supported
+      ansible.builtin.dnf:
+        name: http
+        state: present
+      when: ansible_facts['distribution'] in supported_distros
+
+
+        #Por ejemplo, la siguiente declaración condicional se cumple si la máquina ejecuta Red Hat Enterprise Linux 9 o Fedora 34: Este ejemplo usa el carácter mayor que (>) para que el condicional largo se pueda dividir en varias líneas en el playbook, a fin de que sea más fácil de leer.
+when: >
+    ( ansible_facts['distribution'] == "RedHat" and
+      ansible_facts['distribution_major_version'] == "9" )
+    or
+    ( ansible_facts['distribution'] == "Fedora" and
+    ansible_facts['distribution_major_version'] == "34" )
+
+    # IMPORTANTE Cuando usa when con loop para una tarea, se verifica la declaración when de cada ítem.
+
+    # El siguiente ejemplo también combina condicionales y variables register. Este playbook reinicia el servicio httpd únicamente si se ejecuta el servicio postfix:
+---
+- name: Restart HTTPD if Postfix is Running
+  hosts: all
+  tasks:
+    - name: Get Postfix server status
+      ansible.builtin.command: /usr/bin/systemctl is-active postfix 
+      register: result
+
+    - name: Restart Apache HTTPD based on Postfix status
+      ansible.builtin.service:
+        name: httpd
+        state: restarted
+      when: result.rc == 0
+
+# ¿Se está ejecutando Postfix?2
+# Guarda información en el resultado del módulo en una variable denominada result.
+# Evalúe la salida de la tarea Postfix. Si el código de salida del comando systemctl es 0, Postfix está activo y esta tarea reinicia el servicio httpd.
+

@@ -1,0 +1,2 @@
+sudo ansible-playbook -i hosts create_user.yml --vault-id @prompt
+sudo ansible-playbook -i hosts create_user.yml --vault-password-file=vault-pass

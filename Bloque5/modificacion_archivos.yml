@@ -1,0 +1,96 @@
+# Garantía de que exista un archivo en los hosts administrados
+# Esto funciona como el comando touch, creando un archivo vacío si no existe y actualizando su hora de modificación si existe. En este ejemplo, además de tocar el archivo, Ansible se asegura de que el usuario propietario, el grupo y los permisos del archivo estén configurados con valores específicos.
+
+- name: Touch a file and set permissions
+  ansible.builtin.file:
+    path: /path/to/file
+    owner: user1
+    group: group1
+    mode: 0640
+    state: touch
+      # Puede usar el módulo ansible.builtin.file para garantizar que un archivo nuevo o existente tenga los permisos correctos o el tipo SELinux también.
+
+      # La siguiente tarea garantiza que el atributo de tipo de contexto SELinux del archivo samba_file es el tipo samba_share_t deseado. Este comportamiento es similar al comando chcon de Linux.
+
+- name: SELinux type is set to samba_share_t
+  ansible.builtin.file:
+    path: /path/to/samba_file
+    setype: samba_share_t
+
+# Copia y edición de archivos en hosts administrados
+# En este ejemplo, el módulo ansible.builtin.copy se usa para copiar un archivo ubicado en el directorio de trabajo de Ansible en el nodo de control a los hosts administrados seleccionados.
+# De forma predeterminada, este módulo supone que force: yes está configurado. Eso obliga al módulo a sobrescribir el archivo remoto si existe, pero tiene un contenido diferente del archivo que se está copiando. Si se configura force: no, solo copia el archivo al host administrado si no existe.
+- name: Copy a file to managed hosts
+  ansible.builtin.copy:
+    src: file
+    dest: /path/to/file
+
+# Para recuperar archivos de hosts administrados, use el módulo ansible.builtin.fetch. Esto puede usarse para recuperar un archivo como una clave pública SSH de un sistema de referencia antes de distribuirlo a otros hosts administrados. Use el parámetro flat: no para garantizar el comportamiento predeterminado de agregar el nombre de host, la ruta y el nombre de archivo al destino.
+- name: Retrieve SSH key from reference host
+  ansible.builtin.fetch:
+    src: "/home/{{ user }}/.ssh/id_rsa.pub"
+    dest: "files/keys/{{ user }}.pub"
+    flat: no
+
+# Para asegurarse de que existe una línea de texto específica en un archivo existente, use el módulo lineinfile.
+- name: Add a line of text to a file
+  ansible.builtin.lineinfile:
+    path: /path/to/file
+    line: 'Add this line to the file'
+    state: present
+
+# Para agregar un bloque de texto a un archivo existente, use el módulo ansible.builtin.blockinfile.
+- name: Add additional lines to a file
+  ansible.builtin.blockinfile:
+    path: /path/to/file
+    block: |
+      First line in the additional block of text
+      Second line in the additional block of text
+    state: present
+
+# Eliminación de un archivo de los hosts administrados
+# Un ejemplo básico para eliminar un archivo de los hosts administrados es usar el módulo ansible.builtin.file con el parámetro state: absent. El parámetro state es opcional para muchos módulos. Siempre debe aclarar si desea state: present o state: absent por varias razones. Algunos módulos soportan otras opciones también. Es posible que el valor predeterminado pueda cambiar en algún momento, pero quizás lo más importante es que facilita la comprensión del estado en el que debe estar el sistema según su tarea.
+
+- name: Make sure a file does not exist on managed hosts
+  ansible.builtin.file:
+    dest: /path/to/file
+    state: absent
+
+      # Recuperación del estado de un archivo en hosts administrados
+      # El módulo ansible.builtin.stat recupera datos para un archivo, de manera similar al comando stat de Linux. Los parámetros proporcionan la funcionalidad para recuperar atributos de archivo, determinar la suma de comprobación de un archivo y más.
+      # En el siguiente ejemplo, se registran los resultados de un módulo ansible.builtin.stat y, luego, se imprime la checksum MD5 del archivo que verificó. (El algoritmo SHA256 más moderno también está disponible; aquí se usa MD5 para mejorar la legibilidad).
+
+- name: Verify the checksum of a file
+  ansible.builtin.stat:
+    path: /path/to/file
+    checksum_algorithm: md5
+  register: result
+
+- ansible.builtin.debug
+    msg: "The checksum of the file is {{ result.stat.checksum }}"
+
+
+      # La información sobre los valores devueltos por el módulo ansible.builtin.stat son registrados en ansible-navigator doc ansible.builtin.stat, o puede registrar una variable y visualizar su contenido para ver qué hay disponible:
+
+- name: Examine all stat output of /etc/passwd
+  hosts: workstation
+
+  tasks:
+    - name: stat /etc/passwd
+      ansible.builtin.stat:
+        path: /etc/passwd
+      register: results
+
+    - name: Display stat results
+      debug:
+        var: results
+
+          # Sincronización de archivos entre el nodo de control y los hosts administrados
+# El módulo ansible.posix.synchronize es un contenedor alrededor de la herramienta rsync, que simplifica las tareas comunes de administración de archivos en sus playbooks. La herramienta rsync debe instalarse en el host local y remoto. De forma predeterminada, cuando usa el módulo ansible.posix.synchronize, el "host local" es el host en el que se origina la tarea ansible.posix.synchronize (por lo general, el nodo de control), y el "host de destino" es el host al que se conecta ansible.posix.synchronize.
+
+# En el siguiente ejemplo se sincroniza un archivo ubicado en el directorio de trabajo de Ansible con los hosts administrados:
+
+- name: synchronize local file to remote files
+  ansible.posix.synchronize:
+    src: file
+    dest: /path/to/file

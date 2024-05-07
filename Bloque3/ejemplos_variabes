@@ -1,0 +1,84 @@
+
+# Definición de la variable de host ansible_user para demo.example.com:
+[servers]
+demo.example.com  ansible_user=joe
+
+# Definición de la variable de grupo user para el grupo de hosts servers.
+[servers]
+demo1.example.com
+demo2.example.com
+
+[servers:vars]
+user=joe
+
+# Definición de la variable de grupo user para el grupo servers, que consta de dos grupos de hosts, cada uno con dos servidores.
+[servers1]
+demo1.example.com
+demo2.example.com
+
+[servers2]
+demo3.example.com
+demo4.example.com
+
+[servers:children]
+servers1
+servers2
+
+[servers:vars]
+user=joe
+
+# FORMA RECOMENDADA
+
+# Si se debe definir un valor general para todos los servidores en los dos centros de datos, se puede establecer una variable de grupo para el grupo de hosts datacenters:
+
+cat ~/project/group_vars/datacenters
+package: httpd
+
+# Si debe definir valores diferentes para cada centro de datos, establezca una variable de grupo para cada grupo de hosts del centro de datos:
+cat ~/project/group_vars/datacenter1
+package: httpd
+cat ~/project/group_vars/datacenter2
+package: apache
+
+# Si debe definir valores diferentes para cada host administrado en cada centro de datos, defina las variables en archivos de variables de host diferentes:
+cat ~/project/host_vars/demo1.example.com
+package: httpd
+cat ~/project/host_vars/demo2.example.com
+package: apache
+cat ~/project/host_vars/demo3.example.com
+package: mariadb-server
+cat ~/project/host_vars/demo4.example.com
+package: mysql-server
+
+#Las variables establecidas en la línea de comando se denominan variables adicionales.
+#Las variables adicionales pueden ser útiles cuando debe reemplazar el valor definido para una variable para una ejecución única de un playbook. Por ejemplo:
+ansible-navigator run main.yml -e "package=apache"
+
+#En lugar de asignar datos de configuración que se relacionen con el mismo elemento con múltiples variables, los administradores pueden usar diccionarios. Un diccionario es una estructura de datos que contiene pares de clave-valor, donde los valores también pueden ser diccionarios.
+user1_first_name: Bob
+user1_last_name: Jones
+user1_home_dir: /users/bjones
+user2_first_name: Anne
+user2_last_name: Cook
+user2_home_dir: /users/acook
+#Este se puede reescribir como un diccionario denominado users:
+users:
+  bjones:
+    first_name: Bob
+    last_name: Jones
+    home_dir: /users/bjones
+  acook:
+    first_name: Anne
+    last_name: Cook
+    home_dir: /users/acook
+
+#Luego puede usar las siguientes variables para acceder a los datos del usuario:
+# Returns 'Bob'
+users.bjones.first_name
+# Returns '/users/acook'
+users.acook.home_dir
+#Debido a que la variable se define como un diccionario Python, hay disponible una sintaxis alternativa.
+users['bjones']['first_name']
+# Returns 'Bob'
+users['acook']['home_dir']
+# Returns '/users/acook'

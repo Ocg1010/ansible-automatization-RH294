@@ -1,0 +1,55 @@
+tasks:
+  - name: copy demo.example.conf configuration template
+    ansible.builtin.template:
+      src: /var/lib/templates/demo.example.conf.template
+      dest: /etc/httpd/conf.d/demo.example.conf
+    notify:
+      - restart apache
+
+handlers:
+  - name: restart apache
+    ansible.builtin.service:
+      name: httpd
+      state: restarted
+
+        #La tarea que notifica al manejador.
+        #La declaración notify indica que la tarea debe desencadenar un manejador.
+        #El nombre del manejador que debe ejecutarse.
+        #La palabra clave handlers indica el inicio de la lista de tareas del manejador.
+        #El nombre del manejador invocado por las tareas.
+        #El módulo que usará el manejador.
+
+
+# En el ejemplo anterior, el manejador restart apache se desencadena al ser notificado por la tarea template de que se ha producido un cambio. Una tarea puede invocar a más de un manejador en su sección notify. Ansible trata la declaración notify como una matriz y realiza iteración de los nombres del manejador:
+tasks:
+  - name: copy demo.example.conf configuration template
+    ansible.builtin.template:
+      src: /var/lib/templates/demo.example.conf.template
+      dest: /etc/httpd/conf.d/demo.example.conf
+    notify:
+      - restart mysql
+      - restart apache
+
+handlers:
+  - name: restart mysql
+    ansible.builtin.service:
+      name: mariadb
+      state: restarted
+
+  - name: restart apache
+    ansible.builtin.service:
+      name: httpd
+      state: restarted
+
+# Los manejadores se ejecutan siempre en el orden especificado por la sección handlers del play. No se ejecutan en el orden en que aparecen en la lista por la declaración notify en una tarea ni en el orden en que las tareas los notifican.
+# Los manejadores se ejecutan después de que se hayan completado todas las demás tareas en el play. Un manejador invocado por una tarea en la parte tasks del playbook no se ejecutará hasta que se hayan procesado todas las tareas en tasks. (Hay algunas excepciones menores a esto).
+
+        #Los nombres de los manejadores se encuentran en un espacio de nombres por play. Si erróneamente se asigna a dos manejadores el mismo nombre, se ejecuta solo uno de ellos.
+
+# Inclusive si más de una tarea notifica a un manejador, este se ejecuta una vez. Si ninguna tarea lo notifica, no se ejecuta el manejador
+
+# Si una tarea que incluye una declaración notify no informa un resultado changed (por ejemplo, un paquete ya se encuentra instalado y la tarea muestra ok), no se notificará al manejador. Ansible notifica a los manejadores solo si la tarea muestra el estado changed.
+
+        #   IMPORTANTE
+        # Los manejadores están diseñados para realizar una acción adicional cuando una tarea realiza un cambio en un host administrado. No deben usarse como sustituto de las tareas normales.
+

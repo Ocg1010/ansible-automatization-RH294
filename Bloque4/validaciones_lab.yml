@@ -1,0 +1,32 @@
+- name: MariaDB server is running
+  hosts: database_dev
+  vars:
+    mariadb_packages:
+      - mariadb-server
+      - python3-PyMySQL
+
+  tasks:
+    - name: MariaDB packages are installed
+      ansible.builtin.dnf:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ mariadb_packages }}"
+
+    - name: Start MariaDB service
+      ansible.builtin.service:
+        name: mariadb
+        state: started
+        enabled: true
+
+
+  # IMPORTANTE
+  # El uso de loop no es la forma más eficaz de instalar paquetes. En el código anterior, el módulo ansible.builtin.dnf se ejecuta una vez para cada paquete en la lista mariadb_packages.
+
+          # Normalmente, debe instalar todos los paquetes como una transacción, pasando la lista completa de paquetes al módulo, en lugar de pasarla un módulo a la vez:
+- name: MariaDB packages are installed
+  ansible.builtin.dnf:
+    name: "{{ mariadb_packages }}"
+    state: present
+      #Sin embargo, otros módulos como ansible.builtin.user no le permiten hacer esto; debe pasar ese módulo a un usuario para operar a la vez. En esos casos, loop es una herramienta invaluable.
+
+      # Este ejemplo es simplemente una forma de ver cómo funciona loop.
