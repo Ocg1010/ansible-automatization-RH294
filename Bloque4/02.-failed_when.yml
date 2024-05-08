@@ -2,7 +2,7 @@
 
 tasks:
   - name: Install a package
-    ansible.builtin.package:
+    ansible.builtin.dnf:
       name: mypackage
       state: present
     register: package_install_result
@@ -23,25 +23,26 @@ tasks:
     register: directory_check
     failed_when: "directory_check.stat.isdir == false"
 
+
   - name: Copy files to directory
     ansible.builtin.copy:
       src: /path/to/files
       dest: /path/to/directory
     when: directory_check.stat.isdir
 
+  #Otras opciones útiles disponibles en el módulo ansible.builtin.stat incluyen:
+#.exists: Indica si el objeto en la ruta especificada existe o no.
+#.size: Devuelve el tamaño del objeto en bytes.
+#.isfile: Indica si el objeto en la ruta especificada es un archivo regular.
+#.islink: Indica si el objeto en la ruta especificada es un enlace simbólico.
+#.uid: Devuelve el ID de usuario del propietario del objeto.
+#.gid: Devuelve el ID de grupo del propietario del objeto.
+#.mode: Devuelve los permisos del objeto en formato octal.
+
+
+
+
 # Aquí, Ansible verifica si un usuario existe en el sistema antes de ejecutar una acción. Si el usuario no existe, se considera un error y se detiene la ejecución del playbook.
-
-      # En cuanto a los códigos de retorno, en Linux, un código de retorno de 0 generalmente indica éxito, mientras que cualquier otro valor indica algún tipo de error. 
-#rc = return_code 
-#0: Éxito.
-#1: Error genérico.
-#2: Error de sintaxis.
-#126: Permiso denegado.
-#127: Comando no encontrado.
-#128: Error de salida del script (normalmente se suma el número de la señal).
-#130: El comando fue interrumpido por una señal (por ejemplo, Ctrl+C).
-#255: Error de salida desconocido.
-
 
 tasks:
   - name: Check if the user exists
@@ -56,7 +57,16 @@ tasks:
       cmd: some_command
     when: user_check.rc == 0
 
-
+# En cuanto a los códigos de retorno, en Linux, un código de retorno de 0 generalmente indica éxito, mientras que cualquier otro valor indica algún tipo de error. 
+#rc = return_code 
+#0: Éxito.
+#1: Error genérico.
+#2: Error de sintaxis.
+#126: Permiso denegado.
+#127: Comando no encontrado.
+#128: Error de salida del script (normalmente se suma el número de la señal).
+#130: El comando fue interrumpido por una señal (por ejemplo, Ctrl+C).
+#255: Error de salida desconocido.
 
 
 

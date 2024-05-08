@@ -4,8 +4,8 @@
   become: true
   tasks:
     - name: Latest version of httpd and firewalld installed
-      ansible.builtin.dnf: 
-        name: 
+      ansible.builtin.dnf:
+        name:
           - httpd
           - firewalld
         state: latest
@@ -15,12 +15,12 @@
         content: "Welcome to the example.com intranet! \n"
         dest: /var/www/index.html
 
-    - name: Firewall enabled and running 
+    - name: Firewall enabled and running
       ansible.builtin.service:
         service: firewalld
         enabled: true
         state: started
-# Envían los argumentos necesarios para garantizar que se permitan conexiones HTTP remotas permanentemente.
+    # Envían los argumentos necesarios para garantizar que se permitan conexiones HTTP remotas permanentemente.
     - name: Firewall permits access to httpd service
       ansible.posix.firewalld:
         service: http
@@ -32,13 +32,9 @@
   hosts: RHEL2
   become: false
   tasks:
-
-# Ejecutar una consulta de contenido web del nodo de control al host administrado y verifican el código de estado recibido.
-
+    # Ejecutar una consulta de contenido web del nodo de control al host administrado y verifican el código de estado recibido.
     - name: Connect to intranet web server
       ansible.builtin.uri:
         url: http://servera.lab.example.com
         return_content: yes
         status_code: 200
-
-

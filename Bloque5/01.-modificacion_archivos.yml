@@ -8,9 +8,9 @@
     group: group1
     mode: 0640
     state: touch
-      # Puede usar el módulo ansible.builtin.file para garantizar que un archivo nuevo o existente tenga los permisos correctos o el tipo SELinux también.
+# Puede usar el módulo ansible.builtin.file para garantizar que un archivo nuevo o existente tenga los permisos correctos o el tipo SELinux también.
 
-      # La siguiente tarea garantiza que el atributo de tipo de contexto SELinux del archivo samba_file es el tipo samba_share_t deseado. Este comportamiento es similar al comando chcon de Linux.
+# La siguiente tarea garantiza que el atributo de tipo de contexto SELinux del archivo samba_file es el tipo samba_share_t deseado. Este comportamiento es similar al comando chcon de Linux.
 
 - name: SELinux type is set to samba_share_t
   ansible.builtin.file:

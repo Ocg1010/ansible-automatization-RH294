@@ -77,7 +77,7 @@ users:
 users.bjones.first_name
 # Returns '/users/acook'
 users.acook.home_dir
-#Debido a que la variable se define como un diccionario Python, hay disponible una sintaxis alternativa.
+# Debido a que la variable se define como un diccionario Python, hay disponible una sintaxis alternativa.
 users['bjones']['first_name']
 # Returns 'Bob'
 users['acook']['home_dir']

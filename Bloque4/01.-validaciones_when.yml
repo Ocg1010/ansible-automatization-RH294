@@ -10,9 +10,8 @@
         name: httpd
       when: run_my_task
 
-        # Para asegurarse de que este sea el caso, puede reescribir la condición when anterior para convertir un valor de cadena accidental en un booleano y pasar valores booleanos sin cambios:
+ # Para asegurarse de que este sea el caso, puede reescribir la condición when anterior para convertir un valor de cadena accidental en un booleano y pasar valores booleanos sin cambios:
 # when: run_my_task | bool
-
 
 #El siguiente ejemplo es un poco más sofisticado y prueba si la variable my_service tiene un valor. Si lo hace, el valor de my_service se usa como nombre del paquete para instalar. Si la variable my_service no está definida, la tarea se omite sin errores.
 ---
@@ -44,7 +43,6 @@
         state: present
       when: ansible_facts['distribution'] in supported_distros
 
-
         #Por ejemplo, la siguiente declaración condicional se cumple si la máquina ejecuta Red Hat Enterprise Linux 9 o Fedora 34: Este ejemplo usa el carácter mayor que (>) para que el condicional largo se pueda dividir en varias líneas en el playbook, a fin de que sea más fácil de leer.
 when: >
     ( ansible_facts['distribution'] == "RedHat" and
@@ -70,7 +68,7 @@ when: >
         state: restarted
       when: result.rc == 0
 
-# ¿Se está ejecutando Postfix?2
+# ¿Se está ejecutando Postfix?
 # Guarda información en el resultado del módulo en una variable denominada result.
 # Evalúe la salida de la tarea Postfix. Si el código de salida del comando systemctl es 0, Postfix está activo y esta tarea reinicia el servicio httpd.
 

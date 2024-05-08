@@ -1,0 +1,35 @@
+# Algunos caracteres que se usan en los patrones de host también tienen significado para la shell. Si usa caracteres comodín o de lista especiales en un playbook de Ansible, debe colocar su patrón de host entre comillas simples para asegurarse de que se analice correctamente.
+
+ hosts: '!test1.example.com,development'
+
+# El carácter de asterisco también se puede usar para que coincida con cualquier host administrado o grupo que contenga una subcadena específica.
+# Por ejemplo, el siguiente patrón de host comodín coincide con todos los nombres de inventario que finalizan en .example.com:
+ hosts: '*.example.com'
+
+# IMPORTANTE
+# Los patrones de host comodín coinciden con todos los nombres de inventario, hosts y grupos de hosts. No distinguen entre nombres que son nombres de DNS, direcciones IP o grupos, lo que puede generar ciertas coincidencias inesperadas.
+
+# Se puede hacer referencia a varias entradas en un inventario con listas lógicas. Una lista de patrones de hosts separados por comas coincide con todos los hosts que coinciden con cualquiera de esos patrones de hosts.
+hosts: labhost1.example.com,test2.example.com,192.168.2.2
+
+# También puede combinar hosts administrados, grupos de hosts y comodines.
+hosts: lab,data*,192.168.2.2
+
+# Si un ítem en una lista comienza con un carácter &, los hosts deben coincidir con ese ítem para coincidir con el patrón de host. Funciona de manera similar que un AND lógico.
+
+# Por ejemplo, en nuestro ejemplo de inventario, el siguiente patrón de host coincidirá con las máquinas en el grupo lab solo si también se encuentran en el grupo datacenter1:
+  hosts: lab,&datacenter1
+# También podría especificar que las máquinas en el grupo datacenter1 coincidan solo si se encuentran en el grupo lab con los patrones de host: &lab,datacenter1 o datacenter1,&lab.
+
+# Puede excluir hosts que coincidan con un patrón de una lista si usa el signo de exclamación o carácter "bang" (!) delante del patrón de host. Esto funciona como un NOT lógico.
+# Este ejemplo coincide con todos los hosts definidos en el grupo datacenter, con la excepción de test2.example.com, dado el inventario de ejemplo:
+
+  hosts: datacenter,!test2.example.com
+# El patrón '!test2.example.com,datacenter' se podría haber usado en el ejemplo anterior para obtener el mismo resultado.
+    
+
+
+    # El último ejemplo muestra el uso de un patrón de host que coincide con todos los hosts del inventario de prueba, con la excepción de los hosts administrados en el grupo datacenter1.
+  hosts: all,!datacenter1
+
+
