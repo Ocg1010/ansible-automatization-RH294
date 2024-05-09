@@ -41,6 +41,41 @@ ansible-galaxy search 'redis' --platforms EL
 ansible-galaxy info geerlingguy.redis
 
 
+
+#Descargar roles desde Ansible Galaxy
+#En el siguiente ejemplo, se muestra cómo configurar un archivo de requisitos con una variedad de fuentes remotas.
+
+[user@host project]$ cat roles/requirements.yml
+# from Ansible Galaxy, using the latest version
+- src: geerlingguy.redis 1
+
+# from Ansible Galaxy, overriding the name and using a specific version
+- src: geerlingguy.redis
+  version: "1.5.0" 2
+  name: redis_prod
+
+# from any Git based repository, using HTTPS
+- src: https://github.com/geerlingguy/ansible-role-nginx.git
+  scm: git 3
+  version: master
+  name: nginx
+
+# from a role tar ball, given a URL;
+#   supports 'http', 'https', or 'file' protocols
+- src: file:///opt/local/roles/myrole.tar 4
+  name: myrole 5
+
+# 1 La palabra clave src especifica el nombre de rol de Ansible Galaxy. Si el rol no está alojado en Ansible Galaxy, la palabra clave src indica la URL del rol.
+
+#2 La palabra clave version se usa para especificar la versión de un rol. La palabra clave version puede tener cualquier valor que corresponda a una bifurcación, etiqueta o hash de confirmación del repositorio de software del rol.
+
+# 3 Si el rol está alojado en un repositorio de control de origen, se necesita el atributo scm.
+
+# 4 Si el rol está alojado en Ansible Galaxy o como una colección de archivos tar en un servidor web, se omite la palabra clave scm.
+
+#5 La palabra clave name se usa para anular el nombre local del rol.
+
+
 # El comando ansible-galaxy también puede administrar roles locales, como aquellos que se encuentran en el directorio roles de un proyecto de playbook. El subcomando ansible-galaxy list enumera los roles locales.
 
 ansible-galaxy list
@@ -49,7 +84,3 @@ ansible-galaxy list
 # Puede eliminar un rol con el subcomando ansible-galaxy remove.
 
 ansible-galaxy remove nginx
-
-
-
-
