@@ -1,0 +1,196 @@
+#Administración de paquetes con Ansible
+
+#El módulo ansible.builtin.dnf de Ansible usa dnf en los hosts administrados para manejar las operaciones de paquetes. El siguiente ejemplo es un playbook que instala el paquete httpd en el host administrado servera.lab.example.com.
+
+---
+- name: Install the required packages on the web server
+  hosts: servera.lab.example.com
+  tasks:
+    - name: Install the httpd packages
+      ansible.builtin.dnf:
+        name: httpd    1
+        state: present 2
+#La palabra clave state indica el estado esperado del paquete en el host administrado:
+
+#present
+#Ansible instala el paquete si aún no está instalado.
+
+#absent
+#Ansible elimina el paquete si está instalado.
+
+#latest
+#Ansible actualiza el paquete si aún no está en la versión más reciente disponible. Si el paquete no está instalado, Ansible lo instala.
+
+# dnf upgrade
+- name: Upgrade all packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest
+# dnf group install "Development Tools"
+#Con el módulo de Ansible ansible.builtin.dnf, debe agregar a los nombres de grupos el prefijo @. Recuerde que puede recuperar la lista de grupos con el comando dnf group list.
+- name: Install Development Tools
+  ansible.builtin.dnf:
+    name: "@Development Tools"
+    state: present
+# dnf module install perl:5.26/minimal
+# Para administrar un módulo de paquete, anteponga su nombre con el carácter @. La sintaxis es la misma que para el comando dnf. Por ejemplo, puede omitir la parte del perfil para usar el perfil predeterminado: @perl:5.26. Recuerde que puede enumerar los módulos de paquetes disponibles con el comando dnf module list.
+- name: Install perl DNF module
+  ansible.builtin.dnf:
+    name: "@perl:5.26/minimal"
+    state: present
+
+# Ejecute el comando ansible-navigator doc ansible.builtin.dnf para obtener ejemplos de parámetros y de playbooks adicionales.
+
+#Para operar en varios paquetes, la palabra clave name acepta una lista. En el siguiente ejemplo, se muestra un playbook que instala tres paquetes en servera.lab.example.com.
+
+---
+- name: Install the required packages on the web server
+  hosts: servera.lab.example.com
+  tasks:
+    - name: Install the packages
+      ansible.builtin.dnf:
+        name:
+          - httpd
+          - mod_ssl
+          - httpd-tools
+        state: present
+##########################################################################################
+# Recopilación de datos sobre paquetes instalados
+# El módulo de Ansible ansible.builtin.package_facts recopila los detalles del paquete instalado en los hosts administrados. Establece la variable ansible_facts['packages'] con los detalles del paquete.
+
+#El playbook siguiente llama al módulo ansible.builtin.package_facts y el módulo ansible.builtin.debug para visualizar el contenido de la variable ansible_facts['packages'] y la versión del paquete NetworkManager instalado.
+---
+- name: Display installed packages
+  hosts: servera.lab.example.com
+  tasks:
+    - name: Gather info on installed packages
+      ansible.builtin.package_facts:
+        manager: auto
+
+    - name: List installed packages
+      ansible.builtin.debug:
+        var: ansible_facts['packages']
+
+    - name: Display NetworkManager version
+      ansible.builtin.debug:
+        msg: "Version {{ ansible_facts['packages']['NetworkManager'][0]['version'] }}"
+      when: "'NetworkManager' in ansible_facts['packages']"
+
+# Para otros administradores de paquetes, Ansible generalmente proporciona un módulo dedicado. El módulo ansible.builtin.apt usa la herramienta de paquetes APT disponible en Debian o Ubuntu. El módulo ansible.windows.win_package puede instalar software en sistemas de Microsoft Windows.
+
+#El playbook siguiente usa condicionales para seleccionar el módulo apropiado en un entorno compuesto por sistemas de Red Hat Enterprise Linux que ejecuta las versiones principales 7, 8 y 9.
+
+---
+- name: Install the required packages on the web servers
+  hosts: webservers
+  tasks:
+    - name: Install httpd on RHEL 8 and 9
+      ansible.builtin.dnf:
+        name: httpd
+        state: present
+      when:
+        - "ansible_facts['distribution'] == 'RedHat'"
+        - "ansible_facts['distribution_major_version'] >= '8'"
+
+    - name: Install httpd on RHEL 7 and earlier
+      ansible.builtin.yum:
+        name: httpd
+        state: present
+      when:
+        - "ansible_facts['distribution'] == 'RedHat'"
+        - "ansible_facts['distribution_major_version'] <= '7'"
+
+# Como alternativa, el módulo genérico ansible.builtin.package detecta y usa automáticamente el administrador de paquetes disponible en los hosts administrados. Con el módulo ansible.builtin.package, puede volver a escribir el playbook anterior de la siguiente manera:
+
+# Sin embargo, el módulo ansible.builtin.package no soporta todas las características que proporcionan los módulos más especializados.
+
+# Además, los sistemas operativos a menudo tienen nombres diferentes para los paquetes que proporcionan. Por ejemplo, el paquete que instala el servidor HTTP Apache es httpd en Red Hat Enterprise Linux y apache2 en Ubuntu.
+
+# En ese caso, aún necesita un condicional para seleccionar el nombre correcto del paquete en función del sistema operativo del host administrado.
+---
+- name: Install the required packages on the web servers
+  hosts: webservers
+  tasks:
+    - name: Install httpd
+      ansible.builtin.package:
+        name: httpd
+        state: present
+##########################################################################################
+# Registro y administración de sistemas con la administración de suscripciones de Red Hat
+
+# El módulo community.general.redhat_subscription realiza el registro y la suscripción en una tarea.
+# La palabra clave state establecida en present indica que el sistema debe registrarse y suscribirse. Cuando se establece en absent, el módulo anula el registro del sistema.
+
+- name: Register and subscribe the system
+  community.general.redhat_subscription:
+    username: yourusername
+    password: yourpassword
+    pool_ids: poolID
+    state: present
+# La siguiente tarea después de la suscripción es habilitar los repositorios de software de Red Hat en el nuevo sistema.
+
+# Con Ansible, puede usar el módulo community.general.rhsm_repository:
+
+- name: Enable Red Hat repositories
+  community.general.rhsm_repository:
+    name:
+      - rhel-9-for-x86_64-baseos-rpms
+      - rhel-9-for-x86_64-appstream-rpms
+    state: present
+##########################################################################################
+
+# Configuración de un repositorio de paquetes RPM
+# Para habilitar el soporte para un repositorio Yum de terceros en un host administrado, Ansible proporciona el módulo ansible.builtin.yum_repository.
+
+Cuando se ejecuta, el playbook siguiente declara un nuevo repositorio Yum en servera.lab.example.com.
+
+---
+- name: Configure the company Yum/DNF repositories
+  hosts: servera.lab.example.com
+  tasks:
+    - name: Ensure Example Repo exists
+      ansible.builtin.yum_repository:
+        file: example   
+        name: example-internal
+        description: Example Inc. Internal YUM/DNF repo
+        baseurl: http://materials.example.com/yum/repository/
+        enabled: yes
+        gpgcheck: yes   
+        state: present  
+        
+
+#La palabra clave file especifica el nombre del archivo que se creará en el directorio /etc/yum.repos.d/. El módulo agrega automáticamente la extensión .repo a ese nombre.
+
+#`Por lo general, los proveedores de software firman digitalmente paquetes RPM con claves GPG. Al establecer la palabra clave gpgcheck en yes, el sistema RPM verifica la integridad del paquete al confirmar que el paquete fue firmado por la clave GPG apropiada. Rechaza la instalación de un paquete si la firma GPG no coincide. Use el módulo de Ansible ansible.builtin.rpm_key, descrito más adelante en esta sección, para instalar la clave GPG pública requerida.
+
+#Al configurar la palabra clave state en present, Ansible crea o actualiza el archivo .repo. Al configurar state en absent, Ansible elimina el archivo.
+
+# El archivo /etc/yum.repos.d/example.repo resultante en servera.lab.example.com es de la siguiente forma:
+[example-internal]
+baseurl = http://materials.example.com/yum/repository/
+enabled = 1
+gpgcheck = 1
+name = Example Inc. Internal YUM repo
+
+##########################################################################################
+# Importación de una clave GPG de RPM
+# Cuando la palabra clave gpgcheck se establece en yes en el módulo ansible.builtin.yum_repository, también debe instalar la clave GPG en el host administrado. El módulo ansible.builtin.rpm_key del siguiente ejemplo implementa la clave pública GPG alojada en un servidor web remoto en el host administrado servera.lab.example.com.
+
+---
+- name: Configure the company Yum/DNF repositories
+  hosts: servera.lab.example.com
+  tasks:
+    - name: Deploy the GPG public key
+      ansible.builtin.rpm_key:
+        key: http://materials.example.com/yum/repository/RPM-GPG-KEY-example
+        state: present
+
+    - name: Ensure Example Repo exists
+      ansible.builtin.yum_repository:
+        file: example
+        name: example-internal
+        description: Example Inc. Internal YUM/DNF repo
+        baseurl: http://materials.example.com/yum/repository/
+        enabled: yes
+        gpgcheck: yes
+        state: present

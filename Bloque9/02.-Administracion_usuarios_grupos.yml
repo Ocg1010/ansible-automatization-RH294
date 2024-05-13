@@ -1,0 +1,188 @@
+# Administración de usuarios y autenticación
+https://docs.ansible.com/ansible/latest/reference_appendices/faq.html#how-do-i-generate-encrypted-passwords-for-the-user-module
+
+#En el siguiente ejemplo se demuestra el módulo ansible.builtin.user:
+
+- name: Create devops_user if missing, make sure is member of correct groups
+  ansible.builtin.user:
+    name: devops_user 
+    shell: /bin/bash 
+    groups: sys_admins, developers 
+    append: true
+
+# El parámetro name es la única opción requerida por el módulo ansible.builtin.user. Su valor es el nombre de la cuenta de servicio o la cuenta de usuario para crear, eliminar o modificar.
+
+# El parámetro shell establece el shell del usuario.
+
+# El parámetro groups, cuando se usa con el parámetro append, le dice a la máquina que agregue los grupos suplementarios sys_admins y developers a este usuario. Si no usa el parámetro append, los grupos proporcionados sobrescriben los grupos complementarios existentes de un usuario. Para configurar el grupo principal para un usuario, use la opción group.
+
+# El módulo ansible.builtin.user también proporciona información en valores de retorno, como el directorio de inicio del usuario y una lista de grupos de los que el usuario es miembro. Estos valores de retorno pueden registrarse en una variable y usarse en tareas posteriores. Puede obtener más información disponible en la documentación para el módulo.
+
+# Parámetros de uso común para el módulo de usuario
+
+
+comment	#Opcionalmente, establece la descripción de una cuenta de usuario.
+
+group	#Opcionalmente, establece el grupo primario del usuario.
+
+groups	#Opcionalmente, establece una lista de grupos complementarios para el 
+usuario. Cuando se establece en un valor nulo, se eliminan todos los grupos excepto el grupo primario.
+
+home	#Opcionalmente, establece la ubicación del directorio de inicio del usuario.
+
+create_home	#Opcionalmente, toma un valor booleano de true o false. Se crea un directorio de inicio para el usuario si el valor se establece en true.
+
+system	#Opcionalmente, toma un valor booleano de true o false. Al crear una cuenta, convierte al usuario en una cuenta del sistema si el valor está definido en true. Esta configuración no se puede cambiar en los usuarios existentes.
+
+uid	#Establece el número de UID del usuario.
+
+state	#Si se establece en present, cree la cuenta si falta (la configuración predeterminada). Si se establece en absent, elimine la cuenta si está presente.
+
+###########################################################################################
+# Use el módulo de usuario para generar una clave SSH
+# El módulo ansible.builtin.user puede generar una clave SSH si se invoca con el parámetro generate_ssh_key.
+
+- name: Create an SSH key for user1
+  ansible.builtin.user:
+    name: user1
+    generate_ssh_key: true 
+    ssh_key_bits: 2048 
+    ssh_key_file: .ssh/id_my_rsa 
+
+#El parámetro generate_ssh_key acepta un valor booleano que especifica si se debe generar una clave SSH para el usuario. Esto no sobrescribe una clave SSH existente a menos que el parámetro force se proporcione con el valor true.
+
+#El parámetro ssh_key_bits establece el número de bits en la nueva clave SSH.
+
+#El parámetro ssh_key_file especifica el nombre de archivo para la nueva clave privada SSH (la clave pública agrega el sufijo .pub).
+
+##########################################################################################
+# El módulo group
+
+# El módulo ansible.builtin.group agrega, elimina y modifica grupos en los hosts administrados. Los hosts administrados deben tener disponibles los comandos groupadd, groupdel y groupmod, que se proporcionan en el paquete shadow-utils en Red Hat Enterprise Linux 9. Para los hosts administrados de Microsoft Windows, use el módulo win_group.
+
+- name: Verify that the auditors group exists
+  ansible.builtin.group:
+    name: auditors 
+    state: present 
+ 
+#El parámetro name es la única opción requerida por el módulo ansible.builtin.group. El valor es el nombre del grupo que se administrará.
+
+#El parámetro state acepta el valor absent o present, que elimina o crea el grupo, respectivamente. El valor predeterminado para el parámetro state es present.
+
+gid	#Este parámetro establece el número GID para el grupo. Si se omite, el número se selecciona automáticamente.
+
+local	#Este parámetro fuerza el uso de alternativas de comandos locales (en lugar de comandos que pueden cambiar las fuentes de autenticación central) en las plataformas que lo implementan.
+
+name	#Este parámetro define el nombre del grupo que se administrará.
+
+state	#Este parámetro determina si el grupo debe ser present o absent en el host 
+remoto.
+
+system	# Si este parámetro se establece en true, el grupo se crea como un grupo de sistema (normalmente, con un número GID por debajo de 1000).
+
+####################################################################################
+# El módulo known hosts (host conocido)
+
+# El módulo ansible.builtin.known_hosts administra las claves de host SSH al agregarlas o eliminarlas en los hosts administrados. Esto garantiza que los hosts administrados puedan establecer automáticamente la autenticidad de las conexiones SSH con otros hosts administrados, lo que garantiza que no se solicite a los usuarios que verifiquen la huella digital SSH de un host administrado remoto la primera vez que se conectan a él.
+
+- name: Copy host keys to remote servers
+  ansible.builtin.known_hosts:
+    path: /etc/ssh/ssh_known_hosts 
+    name: servera.lab.example.com 
+    key: servera.lab.example.com,172.25.250.10 ssh-rsa ASDeararAIUHI324324 
+
+# El parámetro path especifica la ruta al archivo known_hosts para editar. Si el archivo no existe, se crea.
+
+# El parámetro name especifica el nombre del host para agregar o eliminar. El nombre debe coincidir con el nombre de host o la dirección IP de la clave que se agrega.
+
+# El parámetro key es la clave de host pública SSH como una cadena en un formato específico. Por ejemplo, el valor del parámetro key debe tener el formato <hostname[,IP]> ssh-rsa <pubkey> para una clave de host pública RSA (que se encuentra en el archivo de clave /etc/ssh/ssh_host_rsa_key.pub de un host) o <hostname[,IP]> ssh-ed25519 <pubkey> para una clave de host pública Ed25519 (que se encuentra en el archivo de clave /etc/ssh/ssh_host_ed25519_key.pub de un host).
+
+#En el siguiente ejemplo se demuestra cómo usar el complemento (plug-in) lookup para completar el parámetro key de un archivo existente en el proyecto de Ansible:
+
+- name: Copy host keys to remote servers
+  ansible.builtin.known_hosts:
+    path: /etc/ssh/ssh_known_hosts
+    name: serverb
+    key: "{{ lookup('ansible.builtin.file', 'pubkeys/serverb') }}"
+# Esta expresión Jinja2 usa la función lookup con el complemento (plug-in) de búsqueda ansible.builtin.file para cargar el contenido del archivo de claves pubkeys/servera.lab.example.com del proyecto Ansible como el valor de la opción key. Puede enumerar los complementos (plug-ins) de búsqueda disponibles mediante el comando ansible-navigator doc -l -t lookup.
+
+###########################################################################################
+# El siguiente play es un ejemplo que usa algunas técnicas avanzadas para construir un archivo /etc/ssh/ssh_known_hosts para todos los hosts administrados en el inventario. Puede haber formas más eficientes de lograr esto, ya que ejecuta un bucle anidado en todos los hosts administrados.
+
+#Usa el módulo ansible.builtin.slurp para obtener el contenido de las claves de host públicas RSA y Ed25519 SSH en formato Base64 y, luego, procesa los valores de la variable registrada con los filtros b64decode y trim para volver a convertir esos valores a texto sin formato.
+- name: Configure /etc/ssh/ssh_known_hosts files
+  hosts: all
+
+  tasks:
+    - name: Collect RSA keys
+      ansible.builtin.slurp:
+        src: /etc/ssh/ssh_host_rsa_key.pub
+      register: rsa_host_keys
+
+    - name: Collect Ed25519 keys
+      ansible.builtin.slurp:
+        src: /etc/ssh/ssh_host_ed25519_key.pub
+      register: ed25519_host_keys
+
+    - name: Deploy known_hosts
+      ansible.builtin.known_hosts:
+        path: /etc/ssh/ssh_known_hosts
+        name: "{{ item[0] }}" 
+        key: "{{ hostvars[ item[0] ]['ansible_facts']['fqdn'] }} {{ hostvars[ item[0] ][ item[1] ]['content'] | b64decode | trim }}" 
+        state: present
+      with_nested:
+        - "{{ ansible_play_hosts }}" 
+        - [ 'rsa_host_keys', 'ed25519_host_keys' ] 
+
+# item[0] es un nombre de host de inventario de la lista en la variable ansible_play_hosts.
+
+#item[1] es la cadena rsa_host_keys o ed25519_host_keys. El filtro b64decode convierte el valor almacenado en la variable de Base64 a texto sin formato y el filtro trim elimina una nueva línea innecesaria. Todo esto es una línea que comienza con key y hay un solo espacio entre las dos expresiones Jinja2.
+
+# ansible_play_hosts es una lista de los hosts que quedan en el play en este punto, extraídos del inventario y eliminando hosts con tareas fallidas. El play debe recuperar las claves de host públicas RSA y Ed25519 para cada uno de los otros hosts cuando construye el archivo known_hosts en cada host del play.
+
+# Esta es una lista de dos ítems de las dos variables que usa el play para almacenar claves de host.
+
+#######################################################################################
+# El módulo authorized key (clave autorizada)
+# En el siguiente ejemplo se demuestra cómo usar el módulo ansible.posix.authorized_key para agregar una clave SSH a un host administrado:
+
+- name: Set authorized key
+  ansible.posix.authorized_key:
+    user: user1 
+    state: present 
+    key: "{{ lookup('ansible.builtin.file', 'files/user1/id_rsa.pub') }}" 
+
+
+# El parámetro user especifica el nombre de usuario del usuario cuyo archivo authorized_keys se modifica en el host administrado.
+
+# El parámetro state acepta el valor present o absent con present como valor predeterminado.
+
+# El parámetro key especifica la clave pública SSH para agregar o eliminar. En este ejemplo, la función lookup usa el complemento (plug-in) de búsqueda ansible.builtin.file para cargar el contenido del archivo files/user1/id_rsa.pub del proyecto Ansible como el valor de key. Como alternativa, puede proporcionar una URL a un archivo de clave pública como este valor. 
+
+#########################################################################################
+# Configuración del acceso Sudo para usuarios y grupos
+# En Red Hat Enterprise Linux 9, puede configurar el acceso para que un usuario o grupo ejecute comandos sudo sin requerir una solicitud de contraseña.
+
+- name: Modify sudo to allow the group01 group sudo without a password
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/group01 
+    state: present 
+    create: true 
+    mode: 0440 
+    line: "%group01 ALL=(ALL) NOPASSWD: ALL" 
+    validate: /usr/sbin/visudo -cf %s 
+
+    	El parámetro path especifica el archivo a modificar en el directorio /etc/sudoers.d/. Es una buena práctica hacer coincidir el nombre del archivo con el nombre del usuario o grupo al que está proporcionando acceso. Esto hace que sea más fácil de consultar en el futuro.
+
+# El parámetro state acepta el valor present o absent. El valor predeterminado es present .
+
+# El parámetro create toma un valor booleano y especifica si el archivo debe crearse si aún no existe. El valor predeterminado para el parámetro create es false.
+
+# El parámetro mode especifica los permisos en el archivo sudoers.
+
+# El parámetro line especifica la línea para agregar al archivo. El formato es específico y se puede encontrar un ejemplo en el archivo /etc/sudoers en el comentario "Lo mismo pero sin contraseña". Si está configurando el acceso sudo para un grupo, debe agregar un signo de porcentaje (%) al principio del nombre del grupo. Si está configurando el acceso sudo para un usuario, no agregue el signo de porcentaje.
+
+
+#El parámetro validate especifica el comando que se ejecutará para verificar que el archivo sea correcto. Cuando el parámetro validate está presente, el archivo se crea en una ruta de archivo temporal y el comando proporcionado valida el archivo temporal. Si el comando de validación se realiza correctamente, el archivo temporal se copia en la ruta especificada en el parámetro path y se elimina el archivo temporal.
+
+#Se puede encontrar un ejemplo del comando de validación sudo en la sección de ejemplos de la salida del comando ansible-navigator doc ansible.builtin.lineinfile.
