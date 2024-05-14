@@ -1,0 +1,162 @@
+# Administrar el inicio del servicio, programar procesos con at, cron y systemd, reiniciar los hosts administrados con reboot y controlar el destino de inicio predeterminado en los hosts administrados.
+
+#La programación rápida y de una vez se realiza con el módulo  .posix.at. Se crea la tarea para que se ejecute en una hora futura y se la retiene hasta el momento de ejecutarse.
+
+command	# El comando para programar la ejecución en el futuro.
+
+count	# El número entero de unidades a partir de ahora que se debe ejecutar el trabajo. (Debe usarse con units).
+
+units	#Especifica si count se mide en minutos, horas, días o semanas.
+script_file	Un archivo de script existente programado para que se ejecute en el futuro.
+
+state	# El valor predeterminado (present) agrega un trabajo; absent elimina un trabajo coincidente si está presente.
+
+unique	# Si se establece en yes, si un trabajo coincidente ya está presente, no se agrega un nuevo trabajo.
+
+# En el siguiente ejemplo, la tarea que se muestra usa at para programar el comando userdel -r tempuser para que se ejecute en 20 minutos.
+
+- name: Remove tempuser
+  ansible.posix.at:
+    command: userdel -r tempuser
+    count: 20
+    units: minutes
+    unique: yes
+
+
+    ######################################################################################
+    # Para configurar trabajos de Cron, use el módulo ansible.builtin.cron. La opción name es obligatoria y se inserta en crontab como una descripción del trabajo repetido. El módulo también lo usa para determinar si el trabajo Cron ya existe o qué trabajo Cron se debe modificar o eliminar.
+
+name	# El comentario que identifica el trabajo de Cron.
+    
+job	# El comando que se ejecutará.
+
+minute, hour, day, month, weekday	# El valor del campo en la especificación de tiempo para el trabajo en la entrada crontab. Si no se establece, se asume "*" (todos los valores).
+
+state	# Si se establece en present, crea el trabajo Cron (el predeterminado); absent lo elimina.
+
+user	# El trabajo Cron se ejecuta como este usuario. Si no se especifica cron_file, el trabajo se establece en el archivo crontab de ese usuario.
+
+cron_file	# Si está configurado, cree un trabajo Cron del sistema en cron_file. Debe especificar user y una especificación de tiempo. Si usa una ruta relativa, el archivo se crea en /etc/cron.d.
+
+# Esta primera tarea de ejemplo crea un trabajo Cron en el archivo personal crontab del usuario testing. Ejecuta su script personal backup-home-dir a las 16:00 todos los viernes. Puede iniciar sesión como ese usuario y ejecutar crontab -l después de ejecutar el playbook para confirmar que funcionó.
+
+- name: Schedule backups for my home directory
+  ansible.builtin.cron:
+    name: Backup my home directory
+    user: testing
+    job: /home/testing/bin/backup-home-dir
+    minute: 0
+    hour: 16
+    weekday: 5
+
+
+# En el siguiente ejemplo, la tarea crea un trabajo Cron del sistema en el archivo /etc/cron.d/flush_bolt que ejecuta un comando como root para vaciar la caché de Bolt cada mañana a las 11:45.
+
+- name: Schedule job to flush the Bolt cache
+  ansible.builtin.cron:
+    name: Flush Bolt cache
+    cron_file: flush_bolt
+    user: "root"
+    minute: 45
+    hour: 11
+    job: "php ./app/nut cache:clear"
+
+######################################################################################
+# Control de las unidades de temporizador de Systemd
+
+#En el siguiente ejemplo se deshabilita y se detiene el temporizador systemd que completa automáticamente la caché de paquetes dnf en Red Hat Enterprise Linux 9.
+
+- name: Disable dnf makecache
+  ansible.builtin.systemd:
+    name: dnf-makecache.timer
+    state: stopped
+    enabled: no
+
+
+#########################################################################################
+# Gestión de servicios
+# Puede elegir entre dos módulos para administrar servicios o recargar daemons: ansible.builtin.systemd y ansible.builtin.service.
+
+# El módulo ansible.builtin.service está diseñado para funcionar con varios sistemas de gestión de servicios, incluidos systemd, Upstart, SysVinit, init BSD y otros. Dado que proporciona una interfaz genérica para el sistema de inicialización, ofrece un conjunto básico de opciones para iniciar, detener, reiniciar y habilitar servicios y otros daemons.
+- name: Start and enable nginx
+  ansible.builtin.service:
+    name: nginx
+    state: started
+    enabled: yes
+
+# El módulo ansible.builtin.systemd está diseñado para funcionar solo con systemd, pero ofrece opciones de configuración adicionales específicas para ese sistema y administrador de servicios.
+
+- name: Start nginx
+  ansible.builtin.systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+# En el siguiente ejemplo se recarga el daemon httpd, pero antes de que lo haga, se ejecuta systemctl daemon-reload para recargar la configuración systemd completa.
+
+- name: Reload web server
+  ansible.builtin.systemd:
+    name: httpd
+    state: reloaded
+    daemon_reload: yes
+
+######################################################################################################
+# Configuración de un objetivo de arranque predeterminado
+# El módulo ansible.builtin.systemd no puede establecer el objetivo de arranque predeterminado. Puede usar el módulo ansible.builtin.command para establecer el objetivo de arranque predeterminado.
+
+- name: Change default systemd target
+  hosts: all
+  gather_facts: false
+
+  vars:
+    systemd_target: "multi-user.target" 
+
+  tasks:
+    - name: Get current systemd target
+      ansible.builtin.command:
+        cmd: systemctl get-default 
+      changed_when: false 
+      register: target 
+
+    - name: Set default systemd target
+      ansible.builtin.command:
+        cmd: systemctl set-default {{ systemd_target }} 
+      when: systemd_target not in target['stdout'] 
+      become: true 
+
+# Esta variable contiene el nombre del objetivo predeterminado que desea.
+
+# Esto obtiene el objetivo actual.
+
+# Debido a que solo se trata de recopilar información, la tarea nunca debe informar changed.
+
+# La variable target contiene la información que se recopiló.
+
+# Este comando establece el objetivo predeterminado.
+
+# Omita esta tarea si el objetivo predeterminado actual ya es el destino predeterminado deseado. Esto asegura que la tarea sea idempotente.
+
+# Esta es la única tarea en este play que requiere acceso root.
+
+
+#########################################################################################
+# Reinicio de hosts administrados.
+
+# Puede usar el módulo dedicado ansible.builtin.reboot para reiniciar los hosts administrados durante la ejecución del playbook. Este módulo reinicia el host administrado y espera hasta que el host administrado vuelva a funcionar antes de continuar con la ejecución del playbook. El módulo determina que un host administrado está respaldado esperando hasta que Ansible pueda ejecutar un comando en el host administrado.
+
+# En el siguiente ejemplo simple se desencadena de inmediato un reinicio:
+
+- name: Reboot now
+  ansible.builtin.reboot:
+   
+# De forma predeterminada, el playbook espera hasta 600 segundos antes de decidir que el reinicio falló y otros 600 segundos antes de decidir que el comando de prueba falló. Puede ajustar este valor para que los tiempos de espera sean cada 180 segundos. Por ejemplo:
+
+- name: Reboot, shorten timeout
+  ansible.builtin.reboot:
+    reboot_timeout: 180
+
+pre_reboot_delay	# El tiempo de espera antes de reiniciar. En Linux, esto se mide en minutos y, si es inferior a 60, se redondea a 0.
+
+msg	# El mensaje que se mostrará a los usuarios antes de reiniciar.
+
+test_command	# El comando que se usa para determinar si el host administrado se puede usar y está listo para más tareas de Ansible después del reinicio. El valor predeterminado es whoami.

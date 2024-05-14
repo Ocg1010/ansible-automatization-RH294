@@ -1,0 +1,274 @@
+# Particionar los dispositivos de almacenamiento, configurar LVM, formatear particiones o volúmenes lógicos, montar sistemas de archivos y agregar espacios de intercambio (swap)
+
+# Use el módulo ansible.posix.mount para montar un sistema de archivos existente. Los parámetros más comunes para el módulo ansible.posix.mount son el parámetro path, que especifica la ruta para montar el sistema de archivos, el parámetro src, que especifica el dispositivo (esto podría ser un nombre de dispositivo, UUID o volumen NFS), el parámetro fstype, que especifica el tipo de sistema de archivos, y el parámetro state, que acepta los valores absent, mounted, present, unmounted o remounted.
+
+# La siguiente tarea de ejemplo monta el recurso compartido de NFS disponible en 172.25.250.100:/share en el directorio /nfsshare de los hosts administrados.
+
+- name: Mount NFS share
+  ansible.posix.mount:
+    path: /nfsshare
+    src: 172.25.250.100:/share
+    fstype: nfs
+    opts: defaults
+    dump: "0"
+    passno: "0"
+    state: mounted
+####################################################################################
+# Red Hat Ansible Automation Platform proporciona un rol del sistema redhat.rhel_system_roles.storage para configurar dispositivos de almacenamiento en sus hosts administrados. Puede gestionar sistemas de archivos en dispositivos de bloques sin particiones y formatear y crear volúmenes lógicos en volúmenes físicos LVM basados en dispositivos de bloques sin particiones.
+
+# Administración de un sistema de archivos en un dispositivo sin particiones
+# Para crear un sistema de archivos en un dispositivo de bloques sin particiones con el rol redhat.rhel_system_roles.storage, defina la variable storage_volumes. La variable storage_volumes contiene una lista de dispositivos de almacenamiento para gestionar.
+name	# El nombre del volumen.
+
+type	# Este valor debe ser disk.
+
+disks	# Debe ser una lista de exactamente un ítem; el dispositivo de bloque sin particiones.
+
+mount_point	# El directorio en el que está montado el sistema de archivos.
+
+fstype	# El tipo de sistema de archivos que se usará. (xfs, ext4 o swap.)
+
+mount_options	# Opciones de montaje personalizadas, como ro o rw.
+
+# El siguiente play de ejemplo crea un sistema de archivos XFS en el dispositivo /dev/vdg y lo monta en /opt/extra.
+- name: Example of a simple storage device
+  hosts: all
+
+  roles:
+    - name: redhat.rhel_system_roles.storage
+      storage_volumes:
+        - name: extra
+          type: disk
+          disks:
+            - /dev/vdg
+          fs_type: xfs
+          mount_point: /opt/extra
+
+
+###########################################################################################
+# Gestión de LVM con el rol de a almacenamiento 
+# Para crear un grupo de volúmenes LVM con el rol redhat.rhel_system_roles.storage, defina la variable storage_pools. La variable storage_pools contiene una lista de conjuntos (pools) (grupos de volúmenes LVM) para gestionar.
+
+# Los ítems del diccionario dentro de la variable storage_pools se usan de la siguiente manera:
+
+#La variable name es el nombre del grupo de volúmenes.
+
+#La variable type debe tener el valor lvm.
+
+#La variable disks es la lista de dispositivos de bloque que el grupo de volúmenes usa para su almacenamiento.
+
+#La variable volumes es la lista de volúmenes lógicos en el grupo de volúmenes.
+
+#La siguiente entrada crea el grupo de volumen vg01 con la clave type establecida en el valor lvm. El volumen físico del grupo de volúmenes es el disco /dev/vdb.
+---
+- name: Configure storage on webservers
+  hosts: webservers
+
+  roles:
+    - name: redhat.rhel_system_roles.storage
+      storage_pools:
+        - name: vg01
+          type: lvm
+          disks:
+            - /dev/vdb
+
+# Para crear volúmenes lógicos, complete la variable volumes, anidada bajo la variable storage_pools, con una lista de nombres de volúmenes lógicos y sus parámetros. Cada ítem de la lista es un diccionario que representa un único volumen lógico dentro de la variable storage_pools.
+
+# Cada ítem de la lista de volúmenes lógicos tiene las siguientes variables de diccionario:
+
+name: # el nombre del volumen lógico.
+
+size: # el tamaño del volumen lógico.
+
+mount_point: # el directorio usado como punto de montaje para el sistema de archivos del volumen lógico.
+
+fs_type: # el tipo de sistema de archivos del volumen lógico.
+
+state: # si el volumen lógico debe existir usando los valores present o absent.
+
+# En el siguiente ejemplo se crean dos volúmenes lógicos, denominados lvol01 y lvol02. El volumen lógico lvol01 tiene un tamaño de 128 MB, está formateado con el sistema de archivos xfs y está montado en /data. El volumen lógico lvol02 tiene un tamaño de 256 MB, está formateado con el sistema de archivos xfs y está montado en /backup.
+---
+- name: Configure storage on webservers
+  hosts: webservers
+
+  roles:
+    - name: redhat.rhel_system_roles.storage
+      storage_pools:
+        - name: vg01
+          type: lvm
+          disks:
+            - /dev/vdb
+          volumes:
+            - name: lvol01
+              size: 128m
+              mount_point: "/data"
+              fs_type: xfs
+              state: present
+            - name: lvol02
+              size: 256m
+              mount_point: "/backup"
+              fs_type: xfs
+              state: present
+# En la siguiente entrada de ejemplo, si el volumen lógico lvol01 ya se creó con un tamaño de 128 MB, el volumen lógico y el sistema de archivos se amplían a 256 MB, suponiendo que el espacio está disponible dentro del grupo de volúmenes.
+
+          volumes:
+            - name: lvol01
+              size: 256m
+              mount_point: "/data"
+              fs_type: xfs
+              state: present
+
+
+############################################################################################ Configuración del espacio de intercambio (swap)
+# Puede usar el rol redhat.rhel_system_roles.storage para crear volúmenes lógicos formateados como espacios de intercambio (swap). El rol crea el volumen lógico, el tipo de sistema de archivos de intercambio (swap), agrega el volumen de intercambio al archivo /etc/fstab y habilita el volumen de intercambio de inmediato.
+
+# En el siguiente ejemplo del playbook se crea el volumen lógico lvswap en el grupo de volúmenes vgswap, se agrega el volumen de intercambio (swap) al archivo /etc/fstab y se habilita el espacio de intercambio.
+
+---
+- name: Configure a swap volume
+  hosts: all
+
+  roles:
+    - name: redhat.rhel_system_roles.storage
+      storage_pools:
+        - name: vgswap
+          type: lvm
+          disks:
+            - /dev/vdb
+          volumes:
+            - name: lvswap
+              size: 512m
+              fs_type: swap
+              state: present
+#####################################################################################################
+# Gestión de particiones
+#Si desea particionar sus dispositivos de almacenamiento sin usar el rol del sistema, sus opciones son un poco más complejas.
+
+# El módulo community.general.parted no soportado en Ansible Content Collection community.general puede realizar esta tarea.
+
+# Puede usar el módulo ansible.builtin.command para ejecutar los comandos de partición en los hosts administrados. Sin embargo, debe tener especial cuidado para asegurarse de que los comandos sean idempotentes y no destruyan inadvertidamente los datos en sus dispositivos de almacenamiento existentes.
+
+# Por ejemplo, la siguiente tarea crea una etiqueta de disco GPT y una partición [ /dev/sda1 en el dispositivo de almacenamiento /dev/sda solo si /dev/sda1 aún no existe:
+
+- name: Ensure that /dev/sda1 exists
+  ansible.builtin.command:
+    cmd: parted --script mklabel gpt mkpart primary 1MiB 100%
+    creates: /dev/sda1
+
+
+# Administración de sistemas de archivos
+# La forma más sencilla de gestionar sistemas de archivos sin usar el rol del sistema podría ser el módulo community.general.filesystem. Sin embargo, Red Hat no soporta este módulo, por lo que lo usa bajo su propia responsabilidad.
+
+# Como alternativa, puede usar el módulo ansible.builtin.command para ejecutar comandos para formatear sistemas de archivos. Sin embargo, debe usar algún mecanismo para asegurarse de que el dispositivo que está formateando no contenga ya un sistema de archivos, para garantizar la idempotencia de su play y para evitar la pérdida accidental de datos. Una forma de hacerlo podría ser revisar los datos relacionados con el almacenamiento recopilados por Ansible para determinar si un dispositivo parece estar formateado con un sistema de archivos.
+
+# Datos de Ansible para la configuración de almacenamiento
+# Los datos de Ansible recopilados por ansible.builtin.setup contienen información útil sobre los dispositivos de almacenamiento en sus hosts administrados.
+
+# Datos sobre los dispositivos de bloque
+# El dato ansible_facts['devices'] incluye información de todos los dispositivos de almacenamiento disponibles en el host administrado. Esto incluye información adicional como las particiones en cada dispositivo o el tamaño total de cada dispositivo.
+
+# El siguiente playbook recopila y muestra el dato ansible_facts['devices'] para cada host administrado.
+
+---
+- name: Display storage facts
+  hosts: all
+
+  tasks:
+    - name: Display device facts
+      ansible.builtin.debug:
+        var: ansible_facts['devices']
+
+# Este dato contiene un diccionario de variables nombradas para los dispositivos en el sistema. Cada variable de dispositivo nombrada tiene un diccionario de variables para su valor, que representa información sobre el dispositivo. Por ejemplo, si tiene el dispositivo /dev/sda en su sistema, puede usar la siguiente expresión Jinja2 (todo en una línea) para determinar su tamaño en bytes:
+
+{{ ansible_facts['devices']['sda']['sectors'] * ansible_facts['devices']['sda']['sectorsize'] }}
+
+# Datos seleccionados de un diccionario de variables de dispositivo
+host	# Una cadena que identifica el controlador al que está conectado el dispositivo de bloque.
+
+model	# Una cadena que identifica el modelo del dispositivo de almacenamiento, si corresponde.
+
+partitions	# Un diccionario de dispositivos de bloque que son particiones en este dispositivo. Cada variable de diccionario tiene como valor un diccionario estructurado como cualquier otro dispositivo (incluidos los valores para sectors, size, etc.).
+
+sectors	# La cantidad de sectores de almacenamiento que contiene el dispositivo.
+
+sectorsize	# El tamaño de cada sector en bytes.
+
+size	# Un cálculo aproximado legible por humanos del tamaño del dispositiv
+
+#Por ejemplo, puede encontrar el tamaño de /dev/sda1 a partir del siguiente dato:
+ansible_facts['devices']['sda']['partitions']['sda1']['size']
+
+# Datos sobre los enlaces de dispositivos
+
+# El dato ansible_facts['device_links'] incluye todos los vínculos disponibles para cada dispositivo de almacenamiento. Si tiene dispositivos de múltiples rutas, puede usar esto para ayudar a determinar qué dispositivos son rutas alternativas al mismo dispositivo de almacenamiento o son dispositivos de múltiples rutas.
+
+# El siguiente playbook recopila y muestra el dato ansible_['device_links'] para cada host administrado.
+
+---
+- name: Gather device link facts
+  hosts: all
+
+  tasks:
+    - name: Display device link facts
+      ansible.builtin.debug:
+        var: ansible_facts['device_links']
+
+
+# Datos sobre los sistemas de archivos montados
+
+# El dato ansible_facts['mounts'] proporciona información sobre los dispositivos montados actualmente en el host administrado. Para cada dispositivo, esto incluye el dispositivo de bloque montado, el punto de montaje de su sistema de archivos, las opciones de montaje, etc.
+
+# El siguiente playbook recopila y muestra el dato ansible_facts['mounts'] para los hosts administrados.
+---
+- name: Gather mounts
+  hosts: all
+
+  tasks:
+    - name: Display mounts facts
+      ansible.builtin.debug:
+        var: ansible_facts['mounts']
+# Variables seleccionadas del diccionario en un ítem de lista del sistema de archivos montado
+# El directorio en el que está montado el sistema de archivos.
+device	# El nombre del dispositivo de bloque que está montado.
+
+fstype	# El tipo de sistema de archivos con el que está formateado el dispositivo (como xfs).
+
+options	# Las opciones de montaje actuales en vigor.
+
+size_total	# El tamaño total del dispositivo.
+
+size_available	# Cuánto espacio hay libre en el dispositivo.
+
+block_size	#El tamaño de los bloques en el sistema de archivos.
+
+block_total	# Cuántos bloques hay en el sistema de archivos.
+
+block_available	# Cuántos bloques hay en el sistema de archivos.
+
+inode_available	# Cuántos inodos hay libres en el sistema de archivos.
+
+
+# Por ejemplo, puede determinar el espacio libre en el sistema de archivos root (/) en cada host administrado con el siguiente play:
+
+- name: Print free space on / file system
+  hosts: all
+  gather_facts: true 
+
+  tasks:
+    - name: Display free space
+      ansible.builtin.debug:
+        msg: >
+          The root file system on {{ ansible_facts['fqdn'] }} has
+          {{ item['block_available'] * item['block_size'] / 1000000 }}
+          megabytes free. 
+      loop: "{{ ansible_facts['mounts'] }}" 
+      when: item['mount'] == '/' 
+
+# Reúna los datos automáticamente.
+
+# La matemática dentro de la segunda expresión Jinja2 calcula megabytes decimales de espacio libre.
+
+# El bucle itera sobre cada sistema de archivos montado en la lista.
+
+# Los condicionales se verifican en cada iteración del bucle. El bucle se desenrolla, pero la tarea solo ejecuta el módulo cuando el condicional coincide.
+

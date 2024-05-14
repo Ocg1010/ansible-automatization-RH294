@@ -1,0 +1,29 @@
+# Cree un playbook denominado users.yml para ejecutar en el grupo de hosts webservers que crea el grupo de usuarios webadmin, agrega los usuarios ops1 y ops2 y garantiza que ambos usuarios tengan webadmin como grupo complementario en esos hosts administrados.
+
+# Ejecute el playbook. Debe confirmar que los usuarios existen en los hosts administrados y que tienen webadmin como grupo complementario después de que se ejecute el playbook.
+
+- name: Crear usuarios y grupos
+  hosts: webservers
+  become: true
+  vars_files:
+    - vars/users_vars.yml
+  tasks:
+    - name: Creando grupo webservers
+      ansible.builtin.group:
+        name: webadmin
+        state: present
+
+    - name: Añadiendo usuarios
+      ansible.builtin.user:
+        name: "{{ item['username'] }}"
+        state: present
+        groups: "{{ item['groups'] }}"
+      loop: "{{ users }}"
+
+    - name: Comprobar usuarios
+      ansible.builtin.command: cat /etc/passwd | grep -E "ops1|ops2"
+      register: usuarios
+
+    - name: Display usuariios
+      ansible.builtin.debug:
+        var: usuarios.stdout_lines

@@ -1,0 +1,24 @@
+# Configure el playbook denominado create_crontab_file.yml para ejecutar el grupo de host webservers que usa el módulo ansible.builtin.cron para crear un sistema de archivos crontab que programa un trabajo cron recurrente. Cree el archivo /etc/cron.d/disk_usage con el archivo crontab del sistema. Configure el trabajo Cron del sistema de ese archivo de la siguiente manera:
+
+# Debe ejecutarse con el usuario devops.
+
+# Debe ejecutarse cada dos minutos de 9:00 a 16:59 de lunes a viernes.
+
+# Debe ejecutar el comando df >> /home/devops/disk_usage.
+
+# Ejecute el playbook. Debe confirmar que configuró el trabajo de Cron correctamente después de ejecutar el playbook. Puede ver si el archivo se implementó correctamente o inspeccionar el archivo de registro /var/log/cron como root para ver si el trabajo se está ejecutando.
+---
+- name: Recurring cron job
+  hosts: webservers
+
+  tasks:
+    - name: Crontab file exists
+      ansible.builtin.cron:
+        name: Add date and time to a file
+        minute: "*/2"
+        hour: 9-16
+        weekday: 1-5
+        user: devops
+        job: df >> /home/devops/disk_usage
+        cron_file: disk_usage
+        state: present

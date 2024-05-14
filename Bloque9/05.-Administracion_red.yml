@@ -1,0 +1,224 @@
+# El rol del sistema redhat.rhel_system_roles.network proporciona una manera de automatizar la configuración de las interfaces de red y las configuraciones relacionadas con la red en los hosts administrados de Red Hat Enterprise Linux.
+
+# Este rol soporta la configuración de interfaces Ethernet, interfaces de puente, interfaces enlazadas, interfaces VLAN, interfaces MACVLAN e interfaces Infiniband e interfaces inalámbricas.
+
+# El rol se configura mediante el uso de dos variables: network_provider y network_connections.
+
+---
+network_provider: nm
+network_connections:
+  - name: ens4
+    type: ethernet
+    ip:
+      address:
+        - 172.25.250.30/24
+# La variable network_provider configura el proveedor de back end, ya sea nm (NetworkManager) o initscripts. En Red Hat Enterprise Linux 7 y versiones posteriores, use nm como proveedor de red predeterminado.
+
+# La variable network_connections configura las diferentes conexiones. Toma como valor una lista de diccionarios, cada uno de los cuales representa configuraciones para una conexión específica. Use el nombre de la interfaz como nombre de la conexión.
+
+# En la siguiente tabla, se enumeran las opciones para la variable network_connections.
+
+name	# Para NetworkManager, identifica el perfil de conexión (la opción connection.id ). Para initscripts, identifica el nombre del archivo de configuración (/etc/sysconfig/network-scripts/ifcfg-name).
+
+state	# El estado de tiempo de ejecución de un perfil de conexión. Puede ser up, si el perfil de conexión está activo, o down, si no lo está.
+
+persistent_state	# Identifica si un perfil de conexión es persistente. Puede ser present si el perfil de conexión es persistente, o absent si no lo es.
+
+type	# Identifica el tipo de conexión. Los valores válidos son ethernet, bridge, bond, team, vlan, macvlan, infiniband y wireless.
+
+autoconnect	# Determina si la conexión se inicia automáticamente. Establecer en yes de forma predeterminada.
+
+mac	# Restringe la conexión que se usará en dispositivos con esta dirección MAC específica.
+
+interface_name	# Restringe el perfil de conexión que usará una interfaz específica.
+
+zone	# Configura la zona firewalld para la interfaz.
+
+ip	# Determina la configuración de IP para la conexión. Soporta las opciones address para especificar una lista de direcciones IPv4 o IPv6 estáticas en la interfaz, gateway4 o gateway6 para especificar el enrutador predeterminado IPv4 o IPv6 y dns para configurar una lista de servidores DNS.
+
+# La variable ip a su vez toma un diccionario de variables para su configuración. No es necesario usar todos estos elementos. Una conexión puede tener una configuración address con una sola dirección IPv4, o puede omitir la configuración de la dirección y tener dhcp4: yes configurado para habilitar el direccionamiento DHCPv4.
+
+ address	# Una lista de direcciones IPv4 o IPv6 estáticas y prefijos de máscara de red para la conexión.
+
+gateway4	# Establece una dirección estática del enrutador IPv4 predeterminado.
+
+gateway6	# Establece una dirección estática del enrutador IPv6 predeterminado.
+
+dns	# Una lista de servidores de nombres DNS para la conexión.
+
+dhcp4	# Use DHCPv4 para configurar la interfaz.
+
+auto6	#Use la configuración automática de IPv6 para configurar la interfaz.
+ 
+# Esta es una variable mínima de ejemplo network_connections para configurar y activar inmediatamente una dirección IPv4 estática para la interfaz enp1s0:
+
+network_connections:
+- name: enp1s0
+  type: ethernet
+  ip:
+    address:
+      - 192.0.2.25/24
+    state: up
+
+# Si estaba configurando dinámicamente la interfaz usando DHCP y SLAAC, podría usar la siguiente configuración en su lugar:
+network_connections:
+- name: enp1s0
+  type: ethernet
+  ip:
+    dhcp4: true
+    auto6: true
+  state: up
+
+# En el siguiente ejemplo se desactiva temporalmente una interfaz de red existente:
+
+network_connections:
+- name: enp1s0
+  type: ethernet
+  state: down
+
+# Para eliminar la configuración de enp1s0 por completo, debe escribir la variable de la siguiente manera:
+network_connections:
+- name: enp1s0
+  type: ethernet
+  state: down
+  persistent_state: absent
+
+
+# En el siguiente ejemplo, se usan algunas de estas opciones para configurar la interfaz eth0 con una dirección IPv4 estática, establecer un servidor de nombres DNS estático y colocar la interfaz en la zona external para firewalld:
+network_connections:
+- name: eth0 
+    persistent_state: present  
+    type: ethernet  
+    autoconnect: yes  
+    mac: 00:00:5e:00:53:5d  
+    ip:
+      address:
+        - 172.25.250.40/24  
+      dns:
+        - 8.8.8.8 
+    zone: external  
+	
+Use eth0 como nombre de conexión.
+
+
+# Haga que la conexión sea persistente. Este es el valor predeterminado.
+
+# Establezca el tipo de partición en ethernet.
+
+# Inicie automáticamente la conexión durante el arranque. Este es el valor predeterminado.
+
+# Restrinja la configuración de la conexión para que la use solo un dispositivo con esa dirección MAC.
+
+# Configure la dirección IP 172.25.250.40/24 para la conexión.
+
+# Configure 8.8.8.8 como el servidor de nombres DNS para la conexión.
+
+
+# En el siguiente play de ejemplo, se establece network_connections como una variable de play y luego invoca al rol redhat.rhel_system_roles.network:
+
+- name: NIC Configuration
+  hosts: webservers
+  vars:
+    network_connections:
+      - name: ens4
+        type: ethernet
+        ip:
+          address:
+            - 172.25.250.30/24
+  roles:
+    - redhat.rhel_system_roles.network
+
+
+
+########################################################################################## 
+# Configuración de redes con módulos
+
+# Además del rol del sistema redhat.rhel_system_roles.network, Ansible incluye módulos que soportan la configuración del nombre de host y el firewall en un sistema.
+
+# El módulo ansible.builtin.hostname establece el nombre de host para un host administrado sin modificar el archivo /etc/hosts. Este módulo usa el parámetro name para especificar el nuevo nombre de host, como en la siguiente tarea:
+
+- name: Change hostname
+  ansible.builtin.hostname:
+    name: managedhost1
+
+# El módulo ansible.posix.firewalld soporta la gestión de firewalld en hosts administrados.
+
+# Este módulo soporta la configuración de las reglas firewalld para servicios y puertos. También soporta la gestión de zona, incluida la asociación de interfaces y reglas de red a una zona específica.
+
+# La siguiente tarea muestra cómo crear una regla de firewalld para el servicio http en la zona predeterminada (public). La siguiente tarea configura la regla como permanente y se asegura de que esté activa:
+
+- name: Enabling http rule
+  ansible.posix.firewalld:
+    service: http
+    permanent: yes
+    state: enabled
+
+# Esta siguiente tarea configura el eth0 en la zona external firewalld:
+
+- name: Moving eth0 to external
+  ansible.posix.firewalld:
+    zone: external
+    interface: eth0
+    permanent: yes
+    state: enabled 
+
+
+interface	# El nombre de la interfaz que se gestionará con firewalld.
+
+port	# Puerto o rango de puertos. Usa el formato puerto/protocolo o puerto-puerto/protocolo.
+
+rich_rule	# Regla enriquecida para firewalld.
+
+service	# El nombre del servicio que se gestionará con firewalld.
+
+source	# Red de origen que se gestionará con firewalld.
+
+zone	# Zona de firewalld.
+
+state	# Habilita o deshabilita una configuración de firewalld.
+
+type	# Tipo de dispositivo o conexión de red.
+
+permanent	# El cambio persiste en los reinicios.
+
+immediate	# Si los cambios se establecen en permanent, aplíquelos inmediatamente.
+
+#################################################################################################
+# Datos de Ansible para la configuración de red
+# Ansible recopila una serie de datos relacionados con la configuración de red de cada host administrado. Por ejemplo, una lista de las interfaces de red en un host administrado está disponible en el dato ansible_facts['interfaces'].
+# El siguiente playbook recopila y muestra las interfaces disponibles para un host:
+
+---
+- name: Obtain interface facts
+  hosts: host.lab.example.com
+
+  tasks:
+    - name: Display interface facts
+      ansible.builtin.debug:
+        var: ansible_facts['interfaces']
+
+# Puede recuperar información adicional sobre la configuración de una interfaz de red específica a partir del dato ansible_facts['NIC_name']. Por ejemplo, el siguiente play muestra la configuración de la interfaz de red eth0 imprimiendo el valor del dato ansible_facts['eth0'].
+- name: Obtain eth0 facts
+  hosts: host.lab.example.com
+
+  tasks:
+    - name: Display eth0 facts
+      ansible.builtin.debug:
+        var: ansible_facts['eth0']
+
+# La siguiente tabla enumera algunos otros datos útiles relacionados con la red.
+
+ansible_facts['dns']	# Una lista de las direcciones IP del servidor de nombres DNS y los dominios de búsqueda.
+
+ansible_facts['domain']	# El subdominio para el host administrado.
+
+ansible_facts['all_ipv4_addresses']	# Todas las direcciones IPv4 configuradas en el host administrado.
+
+ansible_facts['all_ipv6_addresses']	# Todas las direcciones IPv6 configuradas en el host administrado.
+ansible_facts['fqdn']	# El nombre de dominio completamente calificado (FQDN) del host administrado.
+
+ansible_facts['hostname']	# El nombre de host no calificado (la parte del nombre de host antes del primer punto en el FQDN).
+
+ansible_facts['nodename']	# El nombre de host para el host administrado según lo informado por el sistema.
+
+# Ansible también proporciona la "variable mágica" inventory_hostname que incluye el nombre de host como está configurado en el archivo de inventario de Ansible.

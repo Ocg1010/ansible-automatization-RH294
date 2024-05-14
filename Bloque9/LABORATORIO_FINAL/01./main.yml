@@ -1,0 +1,38 @@
+# Cree un playbook denominado repo_playbook.yml para que se ejecute en el grupo de hosts webservers que configure esos hosts administrados para usar el repositorio interno de Yum ubicado en http://materials.example.com/yum/repository y luego instale el paquete rhelver disponible desde ese repositorio en esos hosts administrados.
+
+# La configuración del repositorio debe cumplir con los siguientes requisitos:
+
+# La configuración se encuentra en el archivo /etc/yum.repos.d/example.repo.
+
+# El ID del repositorio es example-internal.
+
+# La URL base es http://materials.example.com/yum/repository.
+
+# El repositorio está configurado para verificar las firmas RPM GPG.
+
+# La descripción del repositorio es Example Inc. Internal YUM repo.
+
+# Los paquetes RPM están firmados con un par de claves GPG organizativas. Esa clave pública de GPG está disponible en http://materials.example.com/yum/repository/RPM-GPG-KEY-example. Debe asegurarse de que la clave esté configurada en todos los hosts administrados en el grupo de hosts webservers.
+
+---
+- name: Nuevo repositorio
+  hosts: webservers
+  become: true
+  tasks:
+    - name: Deploy the GPG public key
+      ansible.builtin.rpm_key:
+        key: http://materials.example.com/yum/repository/RPM-GPG-KEY-example
+        state: present
+
+    - name: Repository
+      ansible.builtin.yum_repository:
+        file: example # Este apartado crea el archivo por defecto en la ruta y le agrega la extension ".repo" /etc/yum.repos.d/example.repo
+        name: example-internal
+        description: xample Inc. Internal YUM repo.
+        gpgcheck: yes
+        baseurl: http://materials.example.com/yum/repository
+
+    - name: Install package
+      ansible.builtin.dnf:
+        name: rhelver
+        state: latest
