@@ -6,6 +6,6 @@
       ansible.posix.authorized_key:
         user: root
         state: present
-        key: '{{ item }}'
+        key: "{{ item }}"
       with_file:
         - ~/.ssh/id_rsa.pub
