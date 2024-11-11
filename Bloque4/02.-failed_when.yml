@@ -60,14 +60,17 @@ tasks:
 # En cuanto a los códigos de retorno, en Linux, un código de retorno de 0 generalmente indica éxito, mientras que cualquier otro valor indica algún tipo de error. 
 #rc = return_code 
 #0: Éxito.
-#1: Error genérico.
-#2: Error de sintaxis.
-#126: Permiso denegado.
-#127: Comando no encontrado.
-#128: Error de salida del script (normalmente se suma el número de la señal).
-#130: El comando fue interrumpido por una señal (por ejemplo, Ctrl+C).
-#255: Error de salida desconocido.
-
+#1: Error genérico o fallo sin especificar.
+#2: Error de uso o sintaxis incorrecta en un comando o script.
+#3: Error en las invocaciones de comandos internos de Bash (no suele usarse directamente en scripts).
+#126: Permiso denegado (comando encontrado, pero no ejecutable).
+#127: Comando no encontrado (el comando o script no existe).
+#128 + N: Terminación por señal Unix, donde N es el número de la señal recibida.
+#130: Interrupción del proceso por Ctrl+C (SIGINT).
+#137: Terminación del comando por kill -9 (SIGKILL).
+#139: Error de segmentación o segfault (generalmente significa que un programa intentó acceder a memoria no permitida).
+#143: Finalización del comando por kill -15 (SIGTERM).
+#255: Error de salida desconocido o fallo en retorno (salida inválida).
 
 
 
